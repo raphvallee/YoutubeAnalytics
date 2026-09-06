@@ -422,8 +422,12 @@ Design notes from implementation:
 
 ### Phase 4 - General YouTube overview (1–2 days)
 
-- Channel leaderboard, hour/weekday bars, monthly trend.
-- **Checkpoint:** same oracle method as Phase 2.
+- [x] Analytics: top channels (incl. first-watch), hour-of-day + weekday histograms, monthly trend, summary stats. *(`src/analytics/youtube.ts`; channels grouped by channelId, fallback display name; Monday-first weekdays; all pure O(n))*
+- [x] OverviewView: stat tiles, channel leaderboard, bar charts (hours, weekdays), monthly trend line. *(peak hour highlighted in accent; single-series charts need no legend per dataviz rules; shares the time-filter toolbar with Music view)*
+- [x] Oracle: channel + hour counts cross-checked against an independent naive counter on the raw JSON. *(`bun scripts/verify-youtube.ts`: 7,507/7,507 channel (name, views) pairs MATCH, all 24 hour slots MATCH, 31 trend months MATCH)*
+- [x] **Checkpoint:** same gate as Phase 2 (typecheck/check/test/build + oracle OK). *(61/61 tests, biome 51 files clean, build green, all 3 oracles OK, preview smoke 200 on all routes)*
+
+Note: the top "channel" in the real export is `(unknown channel)` (958 views) — rows whose subtitles were stripped by Google (e.g. ads or deleted metadata); expected Takeout behavior.
 
 ### Phase 5 - Likes, polish, hardening (2–3 days)
 
