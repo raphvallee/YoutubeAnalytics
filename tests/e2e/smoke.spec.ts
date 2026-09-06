@@ -46,3 +46,23 @@ test("empty state shows the import pointer", async ({ page }) => {
 	await page.goto("/YoutubeAnalytics/music");
 	await expect(page.getByText(/No data imported yet/)).toBeVisible();
 });
+
+test("world map renders with origins lookups disabled", async ({ page }) => {
+	// Keep the smoke hermetic: never hit MusicBrainz/Open-Meteo from CI.
+	await page.addInitScript(() => {
+		localStorage.setItem("origin-lookup-optin", "0");
+	});
+	await page.goto("/YoutubeAnalytics/import");
+	await page.setInputFiles('input[type="file"]', FIXTURE);
+	await expect(page.getByText("Imported dataset")).toBeVisible({
+		timeout: 15_000,
+	});
+
+	await page.goto("/YoutubeAnalytics/map");
+	await expect(page.getByRole("heading", { name: "World map" })).toBeVisible();
+	await expect(
+		page.getByRole("img", { name: /World map with a point/ }),
+	).toBeVisible();
+	// No cache yet and lookups off: origins table shows its empty state.
+	await expect(page.getByText(/No origins resolved yet/)).toBeVisible();
+});

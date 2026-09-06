@@ -11,13 +11,13 @@ Status: Approved plan (all decisions locked via stakeholder Q&A)
 | --- | --- | --- |
 | Framework | **Vite + React 19 + TypeScript (strict)** | Static SPA for GitHub Pages; no SSR value for a local-analytics tool |
 | Package manager | **Bun** | Required |
-| Query/storage engine | **IndexedDB via Dexie + `navigator.storage.persist()`** | Real dataset is 23.5MB / 56,300 rows (ceiling 100MB). DuckDB-Wasm (~2–4MB WASM) is dead weight; plain JS aggregation over in-memory arrays is single-digit milliseconds. See §1.3 persistence semantics |
+| Query/storage engine | **IndexedDB via Dexie + `navigator.storage.persist()`** | Real dataset is 23.5MB / 56,300 rows (ceiling 100MB). DuckDB-Wasm (~2-4MB WASM) is dead weight; plain JS aggregation over in-memory arrays is single-digit milliseconds. See §1.3 persistence semantics |
 | Charting | **Recharts** | Line/area/stacked-area + brush natively; React-idiomatic |
 | UI kit | **shadcn/ui + Tailwind CSS v4** | Dark-mode-first dashboards, copy-paste component ownership |
 | Hosting | **GitHub Pages via GitHub Actions** | Static build, `base: '/<repo>/'` |
 | Likes data | **Optional playlist file upload** | `watch-history.json` contains zero like data (verified). "Liked music" lives in playlist export - user uploads it separately |
 | Album analytics | **Title-parsing + local grouping only** | No album metadata exists anywhere in Takeout; external enrichment rejected for privacy. See §2.5 for the honest degradation of "album" |
-| External API calls | **None, ever** *(one user-approved exception: Phase 6 MusicBrainz enrichment, opt-in + off by default - see Phase 6)* | 100% local-first by default; the only network feature is the explicitly toggled MusicBrainz lookup |
+| External API calls | **None, ever** *(two user-approved exceptions: Phase 6 MusicBrainz release enrichment, opt-in + off by default; Phase 7 artist-origin lookup - MusicBrainz artist search + Open-Meteo geocoding - on by default per explicit user decision, auto-starts on map open, toggleable; every response cached locally - see Phases 6-7)* | 100% local-first by default; the only network features are the two explicitly toggled enrichments |
 
 **Ground-truth data profile** (from the real `watch-history.json` in repo root):
 
@@ -94,7 +94,7 @@ IndexedDB is **persistent origin storage**, not session storage:
 
 Scaling story, in order of what we actually do:
 
-1. **≤ 100MB (our ceiling, 23.5MB today): `File.text()` + `JSON.parse` inside the Worker.** 100MB file → ~2–4s parse, transient memory ~4–6× file size (still < 1GB worst case). Progress is reported per-phase (read → parse → normalize → persist), not per-row. This is the implemented path.
+1. **≤ 100MB (our ceiling, 23.5MB today): `File.text()` + `JSON.parse` inside the Worker.** 100MB file → ~2-4s parse, transient memory ~4-6× file size (still < 1GB worst case). Progress is reported per-phase (read → parse → normalize → persist), not per-row. This is the implemented path.
 2. **> 100MB (defensive path, same worker): chunked streaming parse.** Read the file as `Blob.slice()` chunks, split on top-level object boundaries by scanning for `},{` outside string literals, parse each fragment with `JSON.parse('[' + frag + ']')`, normalize, then free. Constant-ish memory, progress per chunk. Ship only if a user actually hits the ceiling - the interface (`normalize(chunk): Promise<void>`) is identical either way.
 3. **Never:** `response.json()` on the main thread, regex over raw bytes, or any sync parse on the UI thread.
 
@@ -201,7 +201,7 @@ Per entry, in order:
 
 3. **Artist extraction** (music records only):
    - **a. Topic channel:** `channel?.endsWith(' - Topic')` → artist = channel minus suffix. **Poison guard:** if the result is `Release` (the real-data trap), treat as *no* artist - do not rank everything under the artist "Release".
-   - **b. Title fallback:** parse `ARTIST - TRACK` / `TRACK - ARTIST` shapes from the cleaned title: strip decorations first (`(Official Video)`, `(Official Music Video)`, `[Official Audio]`, `(feat. X)` kept as feat info, `(Lyrics)`, `(HD)`, trailing `- YouTube`), then if the title matches `^(.+) [-–-] (.+)$`, pick the side that better matches the topic-channel name when one exists; otherwise assume `A - B` = `A` artist (dominant convention on Vevo-style uploads). Confidence `parsed`.
+   - **b. Title fallback:** parse `ARTIST - TRACK` / `TRACK - ARTIST` shapes from the cleaned title: strip decorations first (`(Official Video)`, `(Official Music Video)`, `[Official Audio]`, `(feat. X)` kept as feat info, `(Lyrics)`, `(HD)`, trailing `- YouTube`), then if the title matches `^(.+) [---] (.+)$`, pick the side that better matches the topic-channel name when one exists; otherwise assume `A - B` = `A` artist (dominant convention on Vevo-style uploads). Confidence `parsed`.
    - **c. Else** artist = null, confidence `unknown`. These still count toward total plays but are excluded from artist leaderboards and surfaced in Settings as "N unattributed music streams".
 
 4. **Decoration strip** for `title` (stored cleaned): parenthetical/bracketed noise from a fixed blocklist; `feat.`/`&` variants are preserved in the string but the *grouping key* for tracks uses the pre-feat portion so "Song (feat. X)" and "Song" aggregate together.
@@ -368,7 +368,7 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 - Brush: all time-series charts ≥ 12 buckets get a Recharts `<Brush>` for zoom.
 - Crosshair: vertical line snap-to-bucket.
 - Palette: categorical palette from the dataviz skill reference (`references/palette.md`), dark-mode-first; `Other` always gray; max 12 hues + gray.
-- All charts `ResponsiveContainer` height-locked (300–380px) to prevent layout thrash.
+- All charts `ResponsiveContainer` height-locked (300-380px) to prevent layout thrash.
 
 ### 4.5 Visual design direction
 
@@ -390,9 +390,9 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 - [x] Vitest installed with a first passing test. *(vitest 5, `formatBytes` suite, 7 tests green)*
 - [x] GitHub Actions Pages workflow committed (typecheck + test + build + deploy). *(`.github/workflows/deploy.yml`, bun setup, 404.html fallback, deploy-pages@v4)*
 - [x] `bun run typecheck && bun run test && bun run build` all pass locally. *(2026-09-05: check 17 files clean, tsc -b clean, 7/7 tests, build 230KB js/25KB css, preview smoke 200 on base path + title + JS asset)*
-- [ ] **Checkpoint:** deployed Pages URL serves the empty shell. *(needs GitHub remote + first push; workflow ready)*
+- [ ] **Checkpoint:** deployed Pages URL serves the empty shell.
 
-### Phase 1 - Ingestion pipeline (2–3 days) ← *the load-bearing phase*
+### Phase 1 - Ingestion pipeline (2-3 days) ← *the load-bearing phase*
 
 - [x] Dexie schema (`streams` + `meta`) with compound indexes, replace-on-import semantics. *(`src/db/db.ts`, `[kind+ts]` + `[artistKey+ts]`; tested via fake-indexeddb)*
 - [x] Ingestion Web Worker (`parse → normalize → dedupe → bulkPut` in 5k transactions) with progress events and multi-file merge. *(`src/ingestion/ingestion.worker.ts` + `ingestClient.ts`; worker asset confirmed in `dist/`)*
@@ -420,7 +420,7 @@ Design notes from implementation:
 - Cumulative overlay line on the affinity chart was dropped: two scales on one axis violates the one-axis rule; the drawer shows cumulative total as a stat instead.
 - Series palette = dataviz reference palette (8 dark slots, adjacency-validated); colors bind to entities via a persistent registry so filter changes never repaint surviving series; 9th+ series folds into gray "Other".
 
-### Phase 4 - General YouTube overview (1–2 days)
+### Phase 4 - General YouTube overview (1-2 days)
 
 - [x] Analytics: top channels (incl. first-watch), hour-of-day + weekday histograms, monthly trend, summary stats. *(`src/analytics/youtube.ts`; channels grouped by channelId, fallback display name; Monday-first weekdays; all pure O(n))*
 - [x] OverviewView: stat tiles, channel leaderboard, bar charts (hours, weekdays), monthly trend line. *(peak hour highlighted in accent; single-series charts need no legend per dataviz rules; shares the time-filter toolbar with Music view)*
@@ -429,7 +429,7 @@ Design notes from implementation:
 
 Note: the top "channel" in the real export is `(unknown channel)` (958 views) - rows whose subtitles were stripped by Google (e.g. ads or deleted metadata); expected Takeout behavior.
 
-### Phase 5 - Likes, polish, hardening (2–3 days)
+### Phase 5 - Likes, polish, hardening (2-3 days)
 
 - [x] Likes: playlist CSV/JSON upload, tolerant parser, Dexie `likes` table, videoId-first matching with artist+title fallback, likes column on artist leaderboard. *(`src/ingestion/likesParse.ts` fuzzy-header CSV + JSON array parser (+tests), Dexie schema v2 `likes` table, `matchLikes` in `src/analytics/likes.ts` (strips ` - Topic` on the fallback key), `LikesUpload` on ImportView, likes cell on `ArtistLeaderboard` rendering "-" when absent)*
 - [ ] Streaming >100MB fallback path (only if interface churn risk is acceptable - else defer). *deferred per the item's own condition: current `File.text()` path passes the 100MB budget below; no churn risk taken*
@@ -445,7 +445,17 @@ Note: the top "channel" in the real export is `(unknown channel)` (958 views) - 
 - [x] Watch-time heatmap calendar. *(`src/analytics/heatmap.ts` day-bucket aggregation + `HeatmapCalendar` GitHub-style month grid on Overview; intensity = quartiles of active days, sequential blue ramp steps 600/500/350/250 validated with the dataviz ordinal checker on the dark surface; tooltip, Less/More legend, role=img summary)*
 - [x] **Checkpoint:** full local gate. *(2026-09-06: biome check 75 files clean, tsc -b clean, 85/85 unit tests, vite build green, Playwright smoke 2/2)*
 
-**Total estimate:** ~11–14 focused days to feature-complete.
+**Total estimate:** ~11-14 focused days to feature-complete.
+
+### Phase 7 - World map of artist origins (implemented 2026-09-06, requested directly by the user)
+
+- [x] Dexie v4 `artistOrigins` table (pk `artistKey`) + `putArtistOrigins`/`allArtistOrigins`/`clearArtistOrigins`; deliberately outside `clearDataset()` - the origin cache survives "Clear data" and is reused across re-imports. *(`src/db/db.ts` version(4) full-copy block, `ArtistOrigin`/`OriginPrecision` in `src/db/types.ts`; survival covered by a dedicated `db.test.ts` case)*
+- [x] Lookup libs, pure + abortable. *(`src/lib/mbArtist.ts` MusicBrainz artist search - `begin_area` = birth/foundation place, the "where they are from" signal; `area` (activity) deliberately ignored; backoff retries 5/10/15s on 429/502/503, permanent misses only on clean empty responses. `src/lib/geocode.ts` Open-Meteo geocoding with `countryCode` disambiguation + city/subdivision classification. `src/lib/iso.ts` alpha-2→numeric/name table. `src/lib/geo.ts` bundled Natural Earth 110m decode + country centroids - all local)*
+- [x] Origin resolution state. *(`src/state/origins.ts`: `originTargets` = all-time attributed artists, plays-desc; `originFromLookups` decision matrix city > subdivision > country > miss with country-centroid fallback; paced 1 req/s cancelable run, batched persistence every 5, incremental cache growth so the map fills live; toggle `origin-lookup-optin` defaults ON per explicit user decision, auto-starts on map open)*
+- [x] `/map` route + World Map nav. *(`src/pages/MapWorldView.tsx`: all-time by design (no time filter), live progress line, origins table ranked by plays with precision chips + MusicBrainz name-mismatch hints; `src/components/charts/WorldMap.tsx`: geoEqualEarth SVG from bundled `world-atlas` countries-110m (~55 kB gzip added), origin countries tinted, one bubble per place sized by all-time plays, hover tooltips)*
+- [x] Import-page controls. *(`src/components/OriginLookupCard.tsx` next to `MusicBrainzCard`: ON-by-default toggle, Run now / Cancel, progress, placed/not-found counts, Clear cache)*
+- [x] Docs amendments. *(§0 exception row now names both network features; CLAUDE.md network line updated to match)*
+- [x] **Checkpoint:** full local gate + live verification. *(2026-09-06: biome check clean, tsc -b clean, 121/121 unit tests, vite build green; Playwright smoke extended to `/map` with lookups disabled for hermetic CI. Live dev-server run against the real 56,300-row export: auto-start resolved artists most-played-first (Future → Atlanta GA, Yeat → Irvine CA, A$AP Rocky → Harlem NY), 1 req/s held, MusicBrainz 503 bursts weathered by backoff and resumable from cache (3,255 artists total); React duplicate-key warning from un-id'd Natural Earth features fixed via synthetic keys)*
 
 ---
 

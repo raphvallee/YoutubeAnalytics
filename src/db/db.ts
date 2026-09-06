@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import {
+	type ArtistOrigin,
 	DATASET_SCHEMA_VERSION,
 	type DatasetMeta,
 	type DatasetSnapshot,
@@ -23,6 +24,7 @@ class AnalyticsDB extends Dexie {
 	snapshots!: EntityTable<DatasetSnapshot, "id">;
 	snapshotData!: EntityTable<SnapshotData, "id">;
 	mbReleases!: EntityTable<MbRelease, "channelId">;
+	artistOrigins!: EntityTable<ArtistOrigin, "artistKey">;
 
 	constructor() {
 		super("youtube-analytics");
@@ -47,6 +49,18 @@ class AnalyticsDB extends Dexie {
 			snapshots: "id, createdAt",
 			snapshotData: "id",
 			mbReleases: "channelId",
+		});
+		// Phase 7: artist-origin cache. Keyed by artistKey and deliberately
+		// outside clearDataset() - external lookups are expensive, so a
+		// re-import must reuse them until the browser data is cleared.
+		this.version(4).stores({
+			streams: "id, ts, kind, artistKey, videoId, [kind+ts], [artistKey+ts]",
+			meta: "key",
+			likes: "id, videoId, artistKey",
+			snapshots: "id, createdAt",
+			snapshotData: "id",
+			mbReleases: "channelId",
+			artistOrigins: "artistKey",
 		});
 	}
 }
@@ -197,4 +211,17 @@ export async function allMbReleases(): Promise<MbRelease[]> {
 
 export async function clearMbReleases(): Promise<void> {
 	await db.mbReleases.clear();
+}
+
+/** Cache artist-origin lookups (one row per artistKey - Phase 7). */
+export async function putArtistOrigins(origins: ArtistOrigin[]): Promise<void> {
+	await db.artistOrigins.bulkPut(origins);
+}
+
+export async function allArtistOrigins(): Promise<ArtistOrigin[]> {
+	return db.artistOrigins.toArray();
+}
+
+export async function clearArtistOrigins(): Promise<void> {
+	await db.artistOrigins.clear();
 }

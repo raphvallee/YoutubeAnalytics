@@ -32,10 +32,7 @@ export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
 						>
 							First watch
 						</th>
-						<th
-							scope="col"
-							className="hidden py-2 pl-2 font-medium sm:table-cell"
-						>
+						<th scope="col" className="hidden p-2 font-medium sm:table-cell">
 							Share
 						</th>
 					</tr>
@@ -58,7 +55,7 @@ export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
 									? new Date(c.firstWatch).toLocaleDateString()
 									: "-"}
 							</td>
-							<td className="hidden py-2 pl-2 sm:table-cell">
+							<td className="hidden p-2 sm:table-cell">
 								<div
 									className="h-1.5 rounded-full bg-primary/60"
 									style={{

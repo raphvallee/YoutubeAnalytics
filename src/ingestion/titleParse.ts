@@ -21,11 +21,16 @@ export function artistKeyOf(name: string): string {
 
 /** Remove noise decorations; keeps `feat.` info in the display title. */
 export function stripDecorations(title: string): string {
-	return title
-		.replace(NOISE_PATTERN, "")
-		.replace(/\s{2,}/g, " ")
-		.replace(/\s+[-–-]\s*$/, "")
-		.trim();
+	return (
+		title
+			.replace(NOISE_PATTERN, "")
+			.replace(/\s{2,}/g, " ")
+			// Matches "Artist - Track" and the en-dash separator variant
+			// (real Takeout titles use both) via unicode escape, so no
+			// literal dash character lives in source.
+			.replace(/\s+[\u2013-]\s*$/, "")
+			.trim()
+	);
 }
 
 /** Grouping key for tracks: decorations AND feat parts removed. */
@@ -45,7 +50,7 @@ export function parseArtistFromTitle(
 	cleanedTitle: string,
 	channelHint?: string | null,
 ): { artist: string; track: string } | null {
-	const match = /^(.{1,80}?)\s+[-–-]\s+(.{1,80})$/.exec(cleanedTitle);
+	const match = /^(.{1,80}?)\s+[---]\s+(.{1,80})$/.exec(cleanedTitle);
 	const left = match?.[1]?.trim();
 	const right = match?.[2]?.trim();
 	if (!left || !right) return null;

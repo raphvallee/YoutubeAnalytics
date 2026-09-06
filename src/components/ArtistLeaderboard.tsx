@@ -54,10 +54,7 @@ export function ArtistLeaderboard({
 						<th scope="col" className="py-2 pr-2 text-right font-medium">
 							Likes
 						</th>
-						<th
-							scope="col"
-							className="hidden py-2 pl-2 font-medium sm:table-cell"
-						>
+						<th scope="col" className="hidden p-2 font-medium sm:table-cell">
 							Share
 						</th>
 					</tr>
@@ -93,7 +90,7 @@ export function ArtistLeaderboard({
 								<td className="py-2 pr-2 text-right font-mono tabular-nums text-muted-foreground">
 									{likesByArtist?.get(a.artistKey)?.toLocaleString() ?? "-"}
 								</td>
-								<td className="hidden py-2 pl-2 sm:table-cell">
+								<td className="hidden p-2 sm:table-cell">
 									<div
 										className="h-1.5 rounded-full bg-primary/60"
 										style={{

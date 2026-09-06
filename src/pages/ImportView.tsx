@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LikesUpload } from "@/components/LikesUpload";
 import { MusicBrainzCard } from "@/components/MusicBrainzCard";
+import { OriginLookupCard } from "@/components/OriginLookupCard";
 import { SnapshotManager } from "@/components/SnapshotManager";
 import { Button } from "@/components/ui/button";
 import { clearDataset, getDatasetMeta } from "@/db/db";
@@ -69,6 +70,10 @@ export default function ImportView() {
 			setImporting(true);
 			setError(null);
 			setProgress({ phase: "read", fileIndex: 0, fileCount: files.length });
+			// Park the store in "loading" for the whole run: views mounted elsewhere
+			// then show a spinner instead of re-reading the DB mid-import (which
+			// would see zero rows and stick them in a false "no data" state).
+			useDatasetStore.setState({ status: "loading" });
 			try {
 				await ingestFiles(files, {
 					onProgress: setProgress,
@@ -81,6 +86,10 @@ export default function ImportView() {
 				await useDatasetStore.getState().reload();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : String(err));
+				// Failed import: re-read the DB so views fall back to its real state
+				// (previous dataset if one existed, empty otherwise) instead of
+				// staying parked in "loading" forever.
+				void useDatasetStore.getState().reload();
 			} finally {
 				setImporting(false);
 				setReloading(false);
@@ -300,6 +309,8 @@ export default function ImportView() {
 			<SnapshotManager />
 
 			<MusicBrainzCard />
+
+			<OriginLookupCard />
 
 			<div className="rounded-lg border p-4 text-sm">
 				<h2 className="mb-2 font-medium">Browser storage</h2>

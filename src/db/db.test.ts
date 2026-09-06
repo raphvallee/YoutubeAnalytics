@@ -1,7 +1,9 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+	allArtistOrigins,
 	allMbReleases,
+	clearArtistOrigins,
 	clearDataset,
 	clearMbReleases,
 	db,
@@ -9,11 +11,12 @@ import {
 	getDatasetMeta,
 	listSnapshots,
 	loadSnapshotRecords,
+	putArtistOrigins,
 	putMbReleases,
 	replaceDataset,
 	saveSnapshot,
 } from "./db";
-import type { StreamRecord } from "./types";
+import type { ArtistOrigin, StreamRecord } from "./types";
 
 function rec(overrides: Partial<StreamRecord>): StreamRecord {
 	return {
@@ -109,6 +112,8 @@ describe("snapshots", () => {
 	it("round-trips name + records, lists newest first", async () => {
 		const records = [rec({ id: "a" }), rec({ id: "b" })];
 		const meta = await saveSnapshot("before second export", records);
+		// createdAt has ms resolution: guarantee the second save sorts newer.
+		await new Promise((r) => setTimeout(r, 2));
 		await saveSnapshot("older", records);
 
 		const list = await listSnapshots();
@@ -126,6 +131,66 @@ describe("snapshots", () => {
 		await deleteSnapshot(meta.id);
 		expect(await listSnapshots()).toHaveLength(0);
 		expect(await loadSnapshotRecords(meta.id)).toBeNull();
+	});
+});
+
+describe("artistOrigins cache", () => {
+	const origin = (
+		artistKey: string,
+		overrides?: Partial<ArtistOrigin>,
+	): ArtistOrigin => ({
+		artistKey,
+		artistName: "Artist",
+		mbid: "mbid-1",
+		resolvedName: "Artist",
+		precision: "city",
+		placeName: "Stockholm",
+		subdivisionName: null,
+		countryName: "Sweden",
+		countryCode: "SE",
+		lat: 59.33,
+		lng: 18.06,
+		resolvedAt: 1,
+		...overrides,
+	});
+
+	beforeEach(async () => {
+		await clearArtistOrigins();
+	});
+
+	it("bulk-puts and overwrites by artistKey", async () => {
+		await putArtistOrigins([origin("artist")]);
+		await putArtistOrigins([
+			origin("artist", {
+				precision: "country",
+				placeName: null,
+				lat: null,
+				lng: null,
+			}),
+			origin("other"),
+		]);
+		const all = await allArtistOrigins();
+		expect(all).toHaveLength(2);
+		expect(all.find((r) => r.artistKey === "artist")?.precision).toBe(
+			"country",
+		);
+	});
+
+	it("survives clearDataset - origins are cache, not dataset", async () => {
+		await putArtistOrigins([
+			origin("artist"),
+			origin("miss", { precision: "miss", mbid: null, lat: null, lng: null }),
+		]);
+		await replaceDataset([rec({ id: "x" })], 1, {
+			duplicateCount: 0,
+			droppedCount: 0,
+			prefixesSeen: [],
+		});
+		await clearDataset();
+		expect(await db.streams.count()).toBe(0);
+		expect(await getDatasetMeta()).toBeUndefined();
+		const all = await allArtistOrigins();
+		expect(all).toHaveLength(2);
 	});
 });
 

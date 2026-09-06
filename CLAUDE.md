@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Local-first analytics web app for Google Takeout YouTube / YouTube Music exports (`watch-history.json`). Everything runs in the browser - **the app must never make external API calls**. `docs/BLUEPRINT.md` is the governing design doc with locked decisions, data-schema analysis, and a phased roadmap. Read its §0 (locked decisions) and §5 (phases) before starting work.
+Local-first analytics web app for Google Takeout YouTube / YouTube Music exports (`watch-history.json`). Everything runs in the browser - **no external API calls except the two user-approved network features** (Phase 6 MusicBrainz release enrichment; Phase 7 artist-origin lookup via MusicBrainz + Open-Meteo geocoding), each behind a toggle and cached locally. `docs/BLUEPRINT.md` is the governing design doc with locked decisions, data-schema analysis, and a phased roadmap. Read its §0 (locked decisions) and §5 (phases) before starting work.
 
 ### Workflow rules
 
@@ -43,4 +43,4 @@ Three-layer SPA (Vite 8 + React 19 + TS):
 2. **Storage** (`src/db/` - not yet built): Dexie tables `streams` + `meta`. Data persists across sessions; `navigator.storage.persist()` (probed in `src/lib/storage.ts`) prevents eviction. On startup the whole dataset loads into memory; all aggregations are pure O(n) passes in `src/analytics/` (planned) memoized by filter key - no query engine, no WASM (dataset is ~56k rows / ≤100MB).
 3. **UI**: `src/pages/` - three routes (`/music`, `/overview`, `/import`) with a sidebar (`src/App.tsx`). shadcn/ui v4 (base-ui flavor) + Tailwind v4, dark-mode-first. Charts: Recharts. Shared time-filter state: Zustand store (planned).
 
-Blueprint phases 0–1 are done/next; `src/lib/storage.ts` and the route shell are Phase 0 output. Future phases add `src/analytics/`, `src/state/`, `src/db/`, `src/ingestion/`.
+Blueprint phases 0-1 are done/next; `src/lib/storage.ts` and the route shell are Phase 0 output. Future phases add `src/analytics/`, `src/state/`, `src/db/`, `src/ingestion/`.

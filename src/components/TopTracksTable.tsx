@@ -35,7 +35,7 @@ export function TopTracksTable({
 						<th scope="col" className="py-2 pr-2 text-right font-medium">
 							Plays
 						</th>
-						<th scope="col" className="py-2 text-right font-medium">
+						<th scope="col" className="p-2 text-right font-medium">
 							Est. time
 						</th>
 					</tr>
@@ -58,7 +58,7 @@ export function TopTracksTable({
 							<td className="py-2 pr-2 text-right font-mono tabular-nums">
 								{t.plays.toLocaleString()}
 							</td>
-							<td className="py-2 text-right font-mono tabular-nums text-muted-foreground">
+							<td className="p-2 text-right font-mono tabular-nums text-muted-foreground">
 								{formatDuration(estSeconds(t.plays))}
 							</td>
 						</tr>

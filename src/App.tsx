@@ -1,12 +1,14 @@
 import { Navigate, NavLink, Route, Routes } from "react-router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ImportView from "@/pages/ImportView";
+import MapWorldView from "@/pages/MapWorldView";
 import MusicView from "@/pages/MusicView";
 import OverviewView from "@/pages/OverviewView";
 
 const NAV_ITEMS = [
 	{ to: "/music", label: "Music" },
 	{ to: "/overview", label: "Overview" },
+	{ to: "/map", label: "World Map" },
 	{ to: "/import", label: "Import" },
 ];
 
@@ -38,6 +40,7 @@ export default function App() {
 						<Route path="/" element={<Navigate to="/music" replace />} />
 						<Route path="/music" element={<MusicView />} />
 						<Route path="/overview" element={<OverviewView />} />
+						<Route path="/map" element={<MapWorldView />} />
 						<Route path="/import" element={<ImportView />} />
 						<Route path="*" element={<Navigate to="/music" replace />} />
 					</Routes>

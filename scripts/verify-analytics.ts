@@ -82,7 +82,9 @@ for (const e of entries) {
 		if (stripped && stripped.toLowerCase() !== "release") artist = stripped;
 	}
 	if (!artist) {
-		const m = /^(.{1,80}?)\s+[-–-]\s+(.{1,80})$/.exec(title);
+		// Matches "Artist - Track" and the en-dash separator variant
+		// via unicode escape, so no literal dash character in source.
+		const m = /^(.{1,80}?)\s+[\u2013-]\s+(.{1,80})$/.exec(title);
 		artist = m?.[1]?.trim() ?? null;
 	}
 

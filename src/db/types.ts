@@ -104,3 +104,40 @@ export interface MbRelease {
 	query: string;
 	resolvedAt: number;
 }
+
+/**
+ * How precisely an artist's origin was located (Phase 7):
+ * - `city`: birth/foundation place geocoded to a populated place
+ * - `subdivision`: the begin area itself is a state/province/region
+ * - `country`: no begin area (or unresolvable) - country centroid
+ * - `miss`: MusicBrainz had no origin data at all
+ */
+export type OriginPrecision = "city" | "subdivision" | "country" | "miss";
+
+/**
+ * One artist's resolved place of origin (Phase 7 - BLUEPRINT §2.7).
+ * Keyed by artistKey and cached forever: survives "Clear data" like the
+ * other enrichment caches, so a re-import never re-queries MusicBrainz.
+ */
+export interface ArtistOrigin {
+	/** Lowercased trimmed artist grouping key (StreamRecord.artistKey). */
+	artistKey: string;
+	/** Display name the lookup was based on. */
+	artistName: string;
+	/** MusicBrainz artist MBID, null on miss. */
+	mbid: string | null;
+	/** MusicBrainz-resolved artist name, null on miss (audit for mismatches). */
+	resolvedName: string | null;
+	precision: OriginPrecision;
+	/** Geocoded place (city or subdivision name), null for country/miss. */
+	placeName: string | null;
+	/** First-level admin division when known (state/province/region). */
+	subdivisionName: string | null;
+	countryName: string | null;
+	/** ISO 3166-1 alpha-2, from MusicBrainz or the geocoder. */
+	countryCode: string | null;
+	/** Point coordinates; null for "miss". */
+	lat: number | null;
+	lng: number | null;
+	resolvedAt: number;
+}
