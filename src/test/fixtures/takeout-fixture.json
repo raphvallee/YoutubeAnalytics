@@ -1,0 +1,138 @@
+[
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé X Off My Chest",
+		"titleUrl": "https://music.youtube.com/watch?v=KyOJZuuX-7k",
+		"subtitles": [
+			{
+				"name": "YC Worldwide - Topic",
+				"url": "https://www.youtube.com/channel/UCOzsdPA4khUkeUaKc6Ice-w"
+			}
+		],
+		"time": "2026-09-05T23:38:26.018Z",
+		"products": ["YouTube"],
+		"activityControls": ["Historique des vidéos regardées sur YouTube"]
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé Old Hundreds",
+		"titleUrl": "https://music.youtube.com/watch?v=DHG-sH-7_Ic",
+		"subtitles": [
+			{
+				"name": "Release - Topic",
+				"url": "https://www.youtube.com/channel/UCRx0aLO_QsN0A9N6oD9Jm7g"
+			}
+		],
+		"time": "2026-09-05T22:00:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé Future - Mask Off",
+		"titleUrl": "https://music.youtube.com/watch?v=THHomD0dElY",
+		"subtitles": [
+			{
+				"name": "Release - Topic",
+				"url": "https://www.youtube.com/channel/UCRx0aLO_QsN0A9N6oD9Jm7g"
+			}
+		],
+		"time": "2026-09-05T21:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Building a DuckDB Query Engine",
+		"titleUrl": "https://www.youtube.com/watch?v=abc123def45",
+		"subtitles": [
+			{
+				"name": "Data Engineering Channel",
+				"url": "https://www.youtube.com/channel/UCdataengineer00"
+			}
+		],
+		"time": "2026-09-04T15:12:40.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Deleted Video Showcase",
+		"time": "2026-09-03T10:00:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Promoted Content",
+		"titleUrl": "https://www.youtube.com/watch?v=adsspot001",
+		"subtitles": [
+			{
+				"name": "Ads Channel",
+				"url": "https://www.youtube.com/channel/UCads000"
+			}
+		],
+		"time": "2026-09-02T09:00:00.000Z",
+		"products": ["YouTube"],
+		"details": [{ "name": "From Google Ads" }]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez recherché takeout json format",
+		"time": "2026-09-02T08:00:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé Broken Entry",
+		"titleUrl": "https://music.youtube.com/watch?v=broken0001"
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé X Off My Chest",
+		"titleUrl": "https://music.youtube.com/watch?v=KyOJZuuX-7k",
+		"subtitles": [
+			{
+				"name": "YC Worldwide - Topic",
+				"url": "https://www.youtube.com/channel/UCOzsdPA4khUkeUaKc6Ice-w"
+			}
+		],
+		"time": "2026-09-05T23:38:26.018Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Assisti to an Untable Prefix Video",
+		"titleUrl": "https://www.youtube.com/watch?v=untabl00001",
+		"subtitles": [
+			{
+				"name": "Some Channel",
+				"url": "https://www.youtube.com/channel/UCuntabl0001"
+			}
+		],
+		"time": "2026-09-01T12:00:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Music Host But Music Header",
+		"titleUrl": "https://music.youtube.com/watch?v=musichost001",
+		"subtitles": [
+			{
+				"name": "Whatever - Topic",
+				"url": "https://www.youtube.com/channel/UCwhatever000"
+			}
+		],
+		"time": "2026-08-31T20:00:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé Dua Lipa - Training Season (Official Video)",
+		"titleUrl": "https://music.youtube.com/watch?v=feattest001",
+		"subtitles": [
+			{
+				"name": "Dua Lipa - Topic",
+				"url": "https://www.youtube.com/channel/UCdualipa0001"
+			}
+		],
+		"time": "2026-08-30T19:00:00.000Z",
+		"products": ["YouTube"]
+	}
+]

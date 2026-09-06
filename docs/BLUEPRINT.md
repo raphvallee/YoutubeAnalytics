@@ -394,10 +394,15 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 
 ### Phase 1 - Ingestion pipeline (2–3 days) ← *the load-bearing phase*
 
-- Dexie schema + worker (`parse → normalize → dedupe → bulkPut`), progress events, multi-file merge.
-- Title/artist extraction with the locale-prefix table, `Release - Topic` guard, confidence flags.
-- Vitest suite against **sliced fixtures from the real file** (grep-selected tricky rows: Release-Topic, missing titleUrl, ad rows, search rows).
-- **Checkpoint:** import 23.5MB file < 5s; row counts match grep counts (39,744 music / 16,556 youtube); reload keeps data; clear works; Settings shows storage estimate.
+- [x] Dexie schema (`streams` + `meta`) with compound indexes, replace-on-import semantics. *(`src/db/db.ts`, `[kind+ts]` + `[artistKey+ts]`; tested via fake-indexeddb)*
+- [x] Ingestion Web Worker (`parse → normalize → dedupe → bulkPut` in 5k transactions) with progress events and multi-file merge. *(`src/ingestion/ingestion.worker.ts` + `ingestClient.ts`; worker asset confirmed in `dist/`)*
+- [x] Title/artist extraction: locale-prefix table, `Release - Topic` guard, confidence flags. *(`prefixes.ts`, `titleParse.ts`, `normalize.ts`)*
+- [x] Vitest suite against fixtures (Release-Topic, missing titleUrl, ad rows, search rows, unknown-locale). *(`src/test/fixtures/takeout-fixture.json`, 42 tests total green)*
+- [x] ImportView: multi-file dropzone, progress, dataset meta panel, clear-data, storage estimate + persist probe. *(persist requested after each import; storage used/quota/eviction-protected shown)*
+- [x] Real-data verification script: counts match grep ground truth (39,744 music / 16,556 youtube of 56,300), timing < 5s. *(`bun scripts/verify-ingest.ts`: 56,300 kept, split exact, 372 ms, 0 dropped/dupes, 573 unattributed)*
+- [x] **Checkpoint:** import 23.5MB file < 5s; row counts match; reload keeps data; clear works; storage estimate shown. *(normalize+dedupe 372ms ≪ 5s; DB replace/clear round-trip unit-tested; true browser-reload persistence = manual check when UI is used in a real browser)*
+
+**Phase 1 data traps found in the real file** (now handled + regression-tested): `header` is `"YouTube Music"` with a **non-breaking space** — plain `===` matched zero rows until normalized; 573 music rows have no recoverable artist (mostly `Release - Topic`); zero search rows and zero duplicate rows in this particular export.
 
 ### Phase 2 - Music MVP (2 days)
 

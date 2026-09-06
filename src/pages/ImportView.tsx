@@ -1,11 +1,252 @@
+import { useLiveQuery } from "dexie-react-hooks";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { clearDataset, getDatasetMeta } from "@/db/db";
+import type { DatasetMeta } from "@/db/types";
+import { type IngestProgress, ingestFiles } from "@/ingestion/ingestClient";
+import {
+	formatBytes,
+	getStorageEstimate,
+	isStoragePersisted,
+	requestPersistentStorage,
+} from "@/lib/storage";
+
+const PHASE_LABEL: Record<IngestProgress["phase"], string> = {
+	read: "Reading file",
+	normalize: "Parsing & normalizing",
+	persist: "Writing to local database",
+};
+
+function formatDate(ts: number): string {
+	return ts ? new Date(ts).toLocaleString() : "—";
+}
+
 export default function ImportView() {
+	const meta = useLiveQuery<DatasetMeta | undefined>(
+		() => getDatasetMeta(),
+		[],
+	);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const [dragging, setDragging] = useState(false);
+	const [importing, setImporting] = useState(false);
+	const [progress, setProgress] = useState<IngestProgress | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [storage, setStorage] = useState<{
+		persisted: boolean | null;
+		usage: number;
+		quota: number;
+	} | null>(null);
+
+	const refreshStorage = useCallback(async () => {
+		const [persisted, estimate] = await Promise.all([
+			isStoragePersisted(),
+			getStorageEstimate(),
+		]);
+		setStorage({
+			persisted,
+			usage: estimate?.usage ?? 0,
+			quota: estimate?.quota ?? 0,
+		});
+	}, []);
+
+	useEffect(() => {
+		void refreshStorage();
+	}, [refreshStorage]);
+
+	const startImport = useCallback(
+		async (files: File[]) => {
+			if (files.length === 0) return;
+			setImporting(true);
+			setError(null);
+			setProgress({ phase: "read", fileIndex: 0, fileCount: files.length });
+			try {
+				await ingestFiles(files, {
+					onProgress: setProgress,
+				});
+				await requestPersistentStorage();
+			} catch (err) {
+				setError(err instanceof Error ? err.message : String(err));
+			} finally {
+				setImporting(false);
+				setProgress(null);
+				void refreshStorage();
+			}
+		},
+		[refreshStorage],
+	);
+
+	const onDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault();
+			setDragging(false);
+			if (importing) return;
+			void startImport(
+				Array.from(e.dataTransfer.files).filter((f) =>
+					f.name.endsWith(".json"),
+				),
+			);
+		},
+		[importing, startImport],
+	);
+
+	const onPick = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			void startImport(Array.from(e.target.files ?? []));
+			e.target.value = "";
+		},
+		[startImport],
+	);
+
+	const onClear = useCallback(async () => {
+		if (
+			!window.confirm(
+				"Delete the imported dataset from this browser? This cannot be undone.",
+			)
+		)
+			return;
+		await clearDataset();
+		void refreshStorage();
+	}, [refreshStorage]);
+
 	return (
-		<section>
-			<h1 className="text-2xl font-semibold">Import</h1>
-			<p className="text-muted-foreground">
-				Upload a Google Takeout <code>watch-history.json</code> here. (Dropzone
-				lands in Phase 1.)
-			</p>
+		<section className="mx-auto max-w-2xl space-y-6">
+			<div>
+				<h1 className="text-2xl font-semibold">Import</h1>
+				<p className="text-sm text-muted-foreground">
+					Upload <code>watch-history.json</code> from your Google Takeout
+					export. Files are parsed entirely in your browser — nothing is
+					uploaded anywhere.
+				</p>
+			</div>
+
+			<button
+				type="button"
+				aria-label="Upload Takeout history files"
+				onDragOver={(e) => {
+					e.preventDefault();
+					setDragging(true);
+				}}
+				onDragLeave={() => setDragging(false)}
+				onDrop={onDrop}
+				onClick={() => !importing && inputRef.current?.click()}
+				className={`flex min-h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+					dragging
+						? "border-ring bg-accent/40"
+						: "border-border hover:bg-accent/20"
+				} ${importing ? "pointer-events-none opacity-60" : ""}`}
+			>
+				<input
+					ref={inputRef}
+					type="file"
+					accept=".json,application/json"
+					multiple
+					className="hidden"
+					onChange={onPick}
+				/>
+				{importing && progress ? (
+					<>
+						<p className="font-medium">
+							{PHASE_LABEL[progress.phase]}… (file {progress.fileIndex + 1}/
+							{progress.fileCount})
+						</p>
+						{typeof progress.rows === "number" && (
+							<p className="text-sm text-muted-foreground">
+								{progress.rows.toLocaleString()} streams kept
+							</p>
+						)}
+					</>
+				) : (
+					<>
+						<p className="font-medium">
+							Drop Takeout JSON files here, or click to browse
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Multiple parts (watch-history(1).json, …) are merged and deduped
+						</p>
+					</>
+				)}
+			</button>
+
+			{error && (
+				<div
+					role="alert"
+					className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm"
+				>
+					{error}
+				</div>
+			)}
+
+			{meta && (
+				<div className="rounded-lg border p-4">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-medium">Imported dataset</h2>
+						<Button variant="destructive" size="sm" onClick={onClear}>
+							Clear data
+						</Button>
+					</div>
+					<dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+						<dt className="text-muted-foreground">Total streams</dt>
+						<dd className="text-right font-mono">
+							{meta.rowCount.toLocaleString()}
+						</dd>
+						<dt className="text-muted-foreground">YouTube Music</dt>
+						<dd className="text-right font-mono">
+							{meta.musicCount.toLocaleString()}
+						</dd>
+						<dt className="text-muted-foreground">YouTube</dt>
+						<dd className="text-right font-mono">
+							{meta.youtubeCount.toLocaleString()}
+						</dd>
+						<dt className="text-muted-foreground">Unattributed music</dt>
+						<dd className="text-right font-mono">
+							{meta.unattributedMusic.toLocaleString()}
+						</dd>
+						<dt className="text-muted-foreground">Duplicates skipped</dt>
+						<dd className="text-right font-mono">
+							{meta.duplicateCount.toLocaleString()}
+						</dd>
+						<dt className="text-muted-foreground">Dropped rows</dt>
+						<dd className="text-right font-mono">
+							{meta.droppedCount.toLocaleString()}
+						</dd>
+						<dt className="text-muted-foreground">Date range</dt>
+						<dd className="text-right font-mono text-xs">
+							{formatDate(meta.minTs)} → {formatDate(meta.maxTs)}
+						</dd>
+						<dt className="text-muted-foreground">Imported</dt>
+						<dd className="text-right font-mono text-xs">
+							{formatDate(meta.importedAt)}
+						</dd>
+					</dl>
+				</div>
+			)}
+
+			<div className="rounded-lg border p-4 text-sm">
+				<h2 className="mb-2 font-medium">Browser storage</h2>
+				{storage ? (
+					<dl className="grid grid-cols-2 gap-x-6 gap-y-1">
+						<dt className="text-muted-foreground">Used</dt>
+						<dd className="text-right font-mono">
+							{formatBytes(storage.usage)}{" "}
+							{storage.quota > 0 && `of ${formatBytes(storage.quota)}`}
+						</dd>
+						<dt className="text-muted-foreground">Eviction-protected</dt>
+						<dd className="text-right">
+							{storage.persisted === null
+								? "unsupported"
+								: storage.persisted
+									? "yes"
+									: "no"}
+						</dd>
+					</dl>
+				) : (
+					<p className="text-muted-foreground">Storage API unavailable.</p>
+				)}
+				<p className="mt-2 text-xs text-muted-foreground">
+					Data persists in this browser across restarts and is only removed by
+					clearing site data or the "Clear data" button above.
+				</p>
+			</div>
 		</section>
 	);
 }
