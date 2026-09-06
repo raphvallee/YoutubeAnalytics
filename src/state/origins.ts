@@ -84,20 +84,24 @@ export function originFromLookups(
 			lng: null,
 		};
 	}
-	if (mb.beginAreaName && geo) {
+	const place = mb.beginAreaName ?? mb.areaName;
+	if (place && geo) {
+		// The begin area is the real origin; the `area` fallback is the main
+		// area of activity - coarser, so it is labelled country-level.
+		const fromBeginArea = mb.beginAreaName !== null;
 		return {
 			mbid: mb.mbid,
 			resolvedName: mb.name,
-			precision: classifyPrecision(geo, mb.beginAreaName),
-			placeName: geo.name,
-			subdivisionName: geo.admin1,
+			precision: fromBeginArea ? classifyPrecision(geo, place) : "country",
+			placeName: fromBeginArea ? geo.name : null,
+			subdivisionName: fromBeginArea ? geo.admin1 : null,
 			countryName: geo.country,
 			countryCode: geo.countryCode ?? mb.country,
 			lat: geo.latitude,
 			lng: geo.longitude,
 		};
 	}
-	// No usable begin area (or it wouldn't geocode): fall back to the
+	// No usable begin/area name (or it wouldn't geocode): fall back to the
 	// country centroid - MusicBrainz' country is origin-ish for People and
 	// an approximation for Groups (their begin area is usually absent).
 	if (mb.country) {
@@ -168,10 +172,18 @@ export const useOriginsStore = create<OriginsState>((set, get) => ({
 		if (!isOriginLookupOn()) return;
 		const records = useDatasetStore.getState().records;
 		if (records.length === 0) return;
-		if (originTargets(records, get().cache).length === 0) return;
-		const controller = new AbortController();
-		activeController = controller;
-		void runLookups(controller.signal, set, get);
+		// Hydrate the cache from Dexie before computing targets: a
+		// just-opened app may start the run before reload() resolves, and
+		// stale-empty targets would re-query already-cached artists.
+		void (async () => {
+			const cache = await allArtistOrigins();
+			if (get().running) return;
+			set({ cache });
+			if (originTargets(records, cache).length === 0) return;
+			const controller = new AbortController();
+			activeController = controller;
+			void runLookups(controller.signal, set, get);
+		})();
 	},
 	cancel: () => {
 		activeController?.abort();
@@ -206,8 +218,9 @@ async function runLookups(
 			}
 
 			let geo: GeoHit | null = null;
-			if (mb?.beginAreaName) {
-				geo = await fetchGeocode(mb.beginAreaName, mb.country, signal);
+			const place = mb?.beginAreaName ?? mb?.areaName;
+			if (place && mb) {
+				geo = await fetchGeocode(place, mb.country, signal);
 			}
 			const centroid = geo ? null : countryCentroid(mb?.country);
 

@@ -8,8 +8,9 @@
  *
  * Origin semantics: MusicBrainz' `begin_area` is the birth place for
  * People and the foundation place for Groups - the "where they are from"
- * the feature wants. `area` (main area of activity) is deliberately
- * ignored: that is where the artist lives/works, not where they are from.
+ * the feature wants. `area` (main area of activity, i.e. where the artist
+ * lives/works) is kept only as a fallback: it is searched when there is no
+ * `begin_area` (common for groups) and the caller labels it coarser.
  */
 import { sleep } from "./musicbrainz";
 
@@ -29,6 +30,8 @@ export interface MbArtistHit {
 	country: string | null;
 	/** Birth (Person) / foundation (Group) place name, null when unset. */
 	beginAreaName: string | null;
+	/** Main area of activity, fallback origin when begin_area is absent. */
+	areaName: string | null;
 }
 
 interface RawArtist {
@@ -37,6 +40,7 @@ interface RawArtist {
 	type?: unknown;
 	country?: unknown;
 	"begin-area"?: { name?: unknown };
+	area?: { name?: unknown };
 }
 
 /** Extract the best artist hit from a MusicBrainz search response (pure). */
@@ -52,6 +56,9 @@ export function parseArtistResponse(json: unknown): MbArtistHit | null {
 			? first.country
 			: null;
 	const beginArea = first["begin-area"];
+	const area = first.area;
+	const areaName =
+		typeof area?.name === "string" && area.name.length > 0 ? area.name : null;
 	return {
 		mbid: first.id,
 		name: first.name,
@@ -61,6 +68,7 @@ export function parseArtistResponse(json: unknown): MbArtistHit | null {
 			typeof beginArea?.name === "string" && beginArea.name.length > 0
 				? beginArea.name
 				: null,
+		areaName,
 	};
 }
 

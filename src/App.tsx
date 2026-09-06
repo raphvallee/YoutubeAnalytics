@@ -1,9 +1,12 @@
+import { useEffect } from "react";
 import { Navigate, NavLink, Route, Routes } from "react-router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ImportView from "@/pages/ImportView";
 import MapWorldView from "@/pages/MapWorldView";
 import MusicView from "@/pages/MusicView";
 import OverviewView from "@/pages/OverviewView";
+import { useDatasetStore } from "@/state/dataset";
+import { useOriginsStore } from "@/state/origins";
 
 const NAV_ITEMS = [
 	{ to: "/music", label: "Music" },
@@ -13,6 +16,23 @@ const NAV_ITEMS = [
 ];
 
 export default function App() {
+	// Load the dataset once at startup (BLUEPRINT §1.2: everything lives in
+	// memory) and kick off artist-origin lookups right away, toggle
+	// permitting - the run is store-level so it keeps going in the
+	// background no matter which page is open.
+	const status = useDatasetStore((s) => s.status);
+	const reloadDataset = useDatasetStore((s) => s.reload);
+	const recordCount = useDatasetStore((s) => s.records.length);
+	const startOrigins = useOriginsStore((s) => s.start);
+
+	useEffect(() => {
+		if (status === "idle") reloadDataset();
+	}, [status, reloadDataset]);
+
+	useEffect(() => {
+		if (status === "ready" && recordCount > 0) startOrigins();
+	}, [status, recordCount, startOrigins]);
+
 	return (
 		<div className="flex min-h-screen">
 			<nav

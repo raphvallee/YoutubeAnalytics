@@ -1,7 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ChartCard } from "@/components/ChartCard";
-import { type MapPoint, WorldMap } from "@/components/charts/WorldMap";
+import {
+	type MapMode,
+	type MapPoint,
+	WorldMap,
+} from "@/components/charts/WorldMap";
 import { LoadingDataset } from "@/components/LoadingDataset";
 import type { ArtistOrigin } from "@/db/types";
 import { isoNumeric } from "@/lib/iso";
@@ -20,6 +24,7 @@ export default function MapWorldView() {
 	const reloadCache = useOriginsStore((s) => s.reload);
 	const running = useOriginsStore((s) => s.running);
 	const progress = useOriginsStore((s) => s.progress);
+	const [mode, setMode] = useState<MapMode>("dots");
 
 	useEffect(() => {
 		reloadCache();
@@ -29,13 +34,7 @@ export default function MapWorldView() {
 		if (status === "idle") reload();
 	}, [status, reload]);
 
-	// Auto-start when opened with data (no-ops otherwise: running, toggled
-	// off, or nothing uncached). start() reads the store's own records.
-	const start = useOriginsStore((s) => s.start);
-	const hasRecords = records.length > 0;
-	useEffect(() => {
-		if (status === "ready" && hasRecords) start();
-	}, [status, hasRecords, start]);
+	// Lookups auto-start at app root (App.tsx); this page only renders.
 
 	const artistPlays = useMemo(() => {
 		const m = new Map<string, { artist: string; plays: number }>();
@@ -127,8 +126,9 @@ export default function MapWorldView() {
 				title="Where your artists come from"
 				subtitle="All-time · artist birth / foundation place, city precision preferred"
 				height={480}
+				actions={<ModeSwitch mode={mode} onMode={setMode} />}
 			>
-				<WorldMap points={points} shadedIds={shadedIds} />
+				<WorldMap points={points} shadedIds={shadedIds} mode={mode} />
 			</ChartCard>
 
 			<ChartCard
@@ -148,6 +148,43 @@ const PRECISION_LABEL: Record<ArtistOrigin["precision"], string> = {
 	country: "Country",
 	miss: "Not found",
 };
+
+const MODE_LABEL: Record<MapMode, string> = {
+	dots: "Dots",
+	heat: "Heatmap",
+	"heat-plays": "Heatmap · plays",
+};
+
+function ModeSwitch({
+	mode,
+	onMode,
+}: {
+	mode: MapMode;
+	onMode: (mode: MapMode) => void;
+}) {
+	return (
+		<fieldset
+			aria-label="Map view mode"
+			className="flex overflow-hidden rounded-md border"
+		>
+			{(Object.keys(MODE_LABEL) as MapMode[]).map((m) => (
+				<button
+					key={m}
+					type="button"
+					aria-pressed={mode === m}
+					className={`border-l border-border px-2.5 py-1 text-xs transition-colors first:border-l-0 ${
+						mode === m
+							? "bg-accent text-accent-foreground"
+							: "text-muted-foreground hover:bg-accent/60"
+					}`}
+					onClick={() => onMode(m)}
+				>
+					{MODE_LABEL[m]}
+				</button>
+			))}
+		</fieldset>
+	);
+}
 
 function OriginTable({
 	cache,

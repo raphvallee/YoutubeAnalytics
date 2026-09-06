@@ -27,6 +27,7 @@ describe("parseArtistResponse", () => {
 			type: "Person",
 			country: "US",
 			beginAreaName: "Baton Rouge",
+			areaName: "United States",
 		});
 	});
 
@@ -40,7 +41,22 @@ describe("parseArtistResponse", () => {
 			type: null,
 			country: null,
 			beginAreaName: null,
+			areaName: null,
 		});
+	});
+
+	it("keeps the area as a fallback when begin-area is absent", () => {
+		const hit = parseArtistResponse({
+			artists: [
+				{
+					id: "mbid-4",
+					name: "Band",
+					area: { id: "a2", name: "Sweden" },
+				},
+			],
+		});
+		expect(hit?.beginAreaName).toBeNull();
+		expect(hit?.areaName).toBe("Sweden");
 	});
 
 	it("rejects a non-2-letter country code", () => {

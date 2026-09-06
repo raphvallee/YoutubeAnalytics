@@ -109,7 +109,8 @@ export interface MbRelease {
  * How precisely an artist's origin was located (Phase 7):
  * - `city`: birth/foundation place geocoded to a populated place
  * - `subdivision`: the begin area itself is a state/province/region
- * - `country`: no begin area (or unresolvable) - country centroid
+ * - `country`: no begin area (or unresolvable) - country centroid, or a
+ *   geocoded MusicBrainz `area` (main activity area, coarser approximation)
  * - `miss`: MusicBrainz had no origin data at all
  */
 export type OriginPrecision = "city" | "subdivision" | "country" | "miss";

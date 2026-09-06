@@ -70,6 +70,7 @@ describe("originFromLookups", () => {
 		type: "Person",
 		country: "US",
 		beginAreaName: "Baton Rouge",
+		areaName: "United States",
 		...over,
 	});
 	const geo = (over: Partial<GeoHit> = {}): GeoHit => ({
@@ -130,6 +131,26 @@ describe("originFromLookups", () => {
 		expect(row.precision).toBe("country");
 		expect(row.countryCode).toBe("US");
 		expect(row.countryName).toBe("United States");
+	});
+
+	it("country: geocoded `area` fallback when begin area is absent", () => {
+		const row = originFromLookups(
+			mb({ beginAreaName: null, areaName: "Sweden" }),
+			geo({
+				name: "Sweden",
+				latitude: 60.13,
+				longitude: 18.64,
+				country: "Sweden",
+				countryCode: "SE",
+				admin1: null,
+				featureCode: "PCLI",
+			}),
+			null,
+		);
+		expect(row.precision).toBe("country");
+		expect(row.placeName).toBeNull();
+		expect(row.countryCode).toBe("SE");
+		expect(row.lat).toBeCloseTo(60.13);
 	});
 
 	it("miss when there is neither begin area nor mappable country", () => {
