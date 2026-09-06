@@ -58,7 +58,7 @@ export interface BucketSpan {
 }
 
 /**
- * Full contiguous list of bucket spans covering [from, to) — the gap-filler
+ * Full contiguous list of bucket spans covering [from, to) - the gap-filler
  * backbone for time series: series map onto these and missing buckets stay 0.
  */
 export function buildBucketSpans(

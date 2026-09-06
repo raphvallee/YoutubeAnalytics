@@ -1,5 +1,5 @@
 /**
- * Real-data verification — blueprint Phase 1 checkpoint.
+ * Real-data verification - blueprint Phase 1 checkpoint.
  * Run: bun scripts/verify-ingest.ts [path/to/watch-history.json]
  *
  * Asserts the normalized music/youtube split matches the raw `header` split
@@ -73,7 +73,7 @@ if (headerMusic + headerYouTube !== entries.length) {
 }
 if (hostOnly !== 0) {
 	console.log(
-		`FAIL: ${hostOnly} rows classified music by host only — header rule missed them`,
+		`FAIL: ${hostOnly} rows classified music by host only - header rule missed them`,
 	);
 	failed = true;
 }

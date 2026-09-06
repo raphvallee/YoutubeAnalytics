@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 /**
- * Ingestion worker — docs/BLUEPRINT.md §1.2.
+ * Ingestion worker - docs/BLUEPRINT.md §1.2.
  * parse → normalize → dedupe → persist. Never touches the UI thread.
  * Dexie runs here too: IndexedDB is available in dedicated workers.
  */

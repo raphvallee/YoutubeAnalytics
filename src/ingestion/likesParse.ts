@@ -1,6 +1,6 @@
 /**
  * Tolerant parser for Takeout playlist exports ("Liked music", "Liked
- * videos") — BLUEPRINT §2.6. Takeout emits one CSV per playlist with
+ * videos") - BLUEPRINT §2.6. Takeout emits one CSV per playlist with
  * header names that vary over time; we detect columns by fuzzy header
  * matching instead of hardcoding one format. Plain JSON arrays are also
  * accepted.

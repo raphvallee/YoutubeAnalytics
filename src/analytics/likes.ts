@@ -1,7 +1,7 @@
 /**
- * Likes matching — BLUEPRINT §2.6: videoId first, (artist, track) fallback.
+ * Likes matching - BLUEPRINT §2.6: videoId first, (artist, track) fallback.
  * Likes never create their own universe: an unmatched like is simply not
- * counted, and the leaderboard renders "—" when no likes dataset exists.
+ * counted, and the leaderboard renders "-" when no likes dataset exists.
  */
 
 import type { LikedTrack, StreamRecord } from "@/db/types";

@@ -1,4 +1,4 @@
-# Personal data — never commit
+# Personal data - never commit
 watch-history.json
 *.takeout.*
 
@@ -23,6 +23,7 @@ bun.lockb.bak
 # Playwright artifacts
 test-results/
 playwright-report/
+.playwright-mcp
 
 # Env
 .env

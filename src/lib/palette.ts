@@ -1,5 +1,5 @@
 /**
- * Categorical series palette — dataviz skill reference instance, dark-mode
+ * Categorical series palette - dataviz skill reference instance, dark-mode
  * steps (app is dark-first). Adjacency-validated: worst CVD ΔE 8.4, normal
  * 19.3, all ≥3:1 on the dark surface. Fixed slot order, never cycled;
  * the 9th+ series folds into "Other" (gray) upstream.
@@ -16,7 +16,7 @@ export const SERIES_COLORS: string[] = [
 	"#e66767", // 8 red
 ];
 
-export const OTHER_COLOR = "#898781"; // muted ink — never a categorical slot
+export const OTHER_COLOR = "#898781"; // muted ink - never a categorical slot
 
 /**
  * Stable color assignment: colors follow the entity (artist/track), not its

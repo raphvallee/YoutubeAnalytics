@@ -13,9 +13,9 @@ export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
 	}
 
 	return (
-		<div className="overflow-x-auto">
+		<div className="max-h-full overflow-auto">
 			<table className="w-full text-sm">
-				<thead>
+				<thead className="sticky top-0 z-10 bg-background">
 					<tr className="border-b text-left text-xs text-muted-foreground">
 						<th scope="col" className="py-2 pr-2 font-medium">
 							#
@@ -56,7 +56,7 @@ export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
 							<td className="hidden py-2 pr-2 text-right font-mono text-xs tabular-nums text-muted-foreground md:table-cell">
 								{c.firstWatch
 									? new Date(c.firstWatch).toLocaleDateString()
-									: "—"}
+									: "-"}
 							</td>
 							<td className="hidden py-2 pl-2 sm:table-cell">
 								<div

@@ -1,5 +1,5 @@
 /**
- * YouTube analytics oracle — blueprint Phase 4 checkpoint.
+ * YouTube analytics oracle - blueprint Phase 4 checkpoint.
  * Run: bun scripts/verify-youtube.ts [path/to/watch-history.json]
  *
  * Computes all-time top channels and the hour histogram twice:
@@ -99,7 +99,7 @@ console.log(
 console.log("\nTop 5 channels:");
 for (let i = 0; i < 5; i++) {
 	const p = pipelineChannels[i];
-	console.log(`  ${i + 1}. ${p ? `${p.channel} (${p.plays})` : "—"}`);
+	console.log(`  ${i + 1}. ${p ? `${p.channel} (${p.plays})` : "-"}`);
 }
 
 if (!channelOk) console.log("FAIL: channel maps differ");

@@ -7,8 +7,8 @@ interface DatasetState {
 	status: "idle" | "loading" | "ready";
 	records: StreamRecord[];
 	meta: DatasetMeta | null;
-	/** Bump to re-run load() after import/clear. */
-	reload: () => void;
+	/** Bump to re-run load() after import/clear. Resolves when data is ready. */
+	reload: () => Promise<void>;
 }
 
 let loadSeq = 0;
@@ -24,7 +24,7 @@ export const useDatasetStore = create<DatasetState>((set) => ({
 	reload: () => {
 		const seq = ++loadSeq;
 		set({ status: "loading" });
-		void Promise.all([loadAllStreams(), getDatasetMeta()]).then(
+		return Promise.all([loadAllStreams(), getDatasetMeta()]).then(
 			([records, meta]) => {
 				if (seq !== loadSeq) return; // a newer reload superseded this one
 				resetSeriesColors(); // colors follow entities; new dataset invalidates registry

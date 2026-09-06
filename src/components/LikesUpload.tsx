@@ -6,7 +6,7 @@ import { useLikesStore } from "@/state/likes";
 
 /**
  * Optional "Liked music / Liked videos" playlist upload (BLUEPRINT §2.6).
- * Runs on the main thread — playlist exports are tiny next to histories.
+ * Runs on the main thread - playlist exports are tiny next to histories.
  */
 export function LikesUpload() {
 	const count = useLikesStore((s) => s.count);

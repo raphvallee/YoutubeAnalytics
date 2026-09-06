@@ -12,7 +12,9 @@ import {
 import { ChannelLeaderboard } from "@/components/ChannelLeaderboard";
 import { ChartCard } from "@/components/ChartCard";
 import { BarsChart } from "@/components/charts/BarsChart";
+import { HeatmapCalendar } from "@/components/charts/HeatmapCalendar";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
+import { LoadingDataset } from "@/components/LoadingDataset";
 import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { SERIES_COLORS } from "@/lib/palette";
 import { useDatasetStore } from "@/state/dataset";
@@ -70,9 +72,7 @@ export default function OverviewView() {
 	);
 
 	if (status !== "ready") {
-		return (
-			<p className="p-6 text-sm text-muted-foreground">Loading dataset…</p>
-		);
+		return <LoadingDataset />;
 	}
 	if (!meta || records.length === 0) {
 		return (
@@ -121,6 +121,14 @@ export default function OverviewView() {
 					data={trend}
 					label={`Viewing trend line chart, views per ${trendBucket}`}
 				/>
+			</ChartCard>
+
+			<ChartCard
+				title="Watch-time calendar"
+				subtitle="Streams per day across the whole dataset"
+				height={200}
+			>
+				<HeatmapCalendar records={records} />
 			</ChartCard>
 
 			<div className="grid gap-6 lg:grid-cols-2">

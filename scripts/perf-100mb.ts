@@ -1,5 +1,5 @@
 /**
- * Synthetic 100MB perf pass — blueprint Phase 5 checkpoint.
+ * Synthetic 100MB perf pass - blueprint Phase 5 checkpoint.
  * Run: bun scripts/perf-100mb.ts [targetMB]
  *
  * Generates a synthetic Takeout-shaped JSON of ~targetMB, then times the

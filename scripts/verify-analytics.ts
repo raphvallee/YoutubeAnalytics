@@ -1,12 +1,12 @@
 /**
- * Analytics oracle — blueprint Phase 2 checkpoint.
+ * Analytics oracle - blueprint Phase 2 checkpoint.
  * Run: bun scripts/verify-analytics.ts [path/to/watch-history.json]
  *
  * Computes the "last 30 days of data" top artists and top tracks twice:
  *  1. via the app's normalize + queries pipeline
  *  2. via an independent naive implementation straight over the raw JSON
- *     (re-implements the documented grouping rules — case/diacritic fold,
- *     decoration strip — but with its own code, no shared imports)
+ *     (re-implements the documented grouping rules - case/diacritic fold,
+ *     decoration strip - but with its own code, no shared imports)
  * Both must agree, otherwise the aggregation layer is wrong.
  */
 
@@ -82,7 +82,7 @@ for (const e of entries) {
 		if (stripped && stripped.toLowerCase() !== "release") artist = stripped;
 	}
 	if (!artist) {
-		const m = /^(.{1,80}?)\s+[-–—]\s+(.{1,80})$/.exec(title);
+		const m = /^(.{1,80}?)\s+[-–-]\s+(.{1,80})$/.exec(title);
 		artist = m?.[1]?.trim() ?? null;
 	}
 
@@ -139,7 +139,7 @@ for (
 	const ok = p && n && fold(p.artist) === n[0] && p.plays === n[1].plays;
 	if (!ok) failed = true;
 	console.log(
-		`  ${i + 1}. ${p ? `${p.artist}=${p.plays}` : "—"} | ${n ? `${n[1].display}=${n[1].plays}` : "—"} ${ok ? "" : "  <-- MISMATCH"}`,
+		`  ${i + 1}. ${p ? `${p.artist}=${p.plays}` : "-"} | ${n ? `${n[1].display}=${n[1].plays}` : "-"} ${ok ? "" : "  <-- MISMATCH"}`,
 	);
 }
 
@@ -152,7 +152,7 @@ for (
 	const p = pipelineTracks[i];
 	const n = naiveTrackTop5[i];
 	console.log(
-		`  ${i + 1}. ${p ? `${p.title} (${p.plays})` : "—"} | ${n ? `${n.display} (${n.plays})` : "—"}`,
+		`  ${i + 1}. ${p ? `${p.title} (${p.plays})` : "-"} | ${n ? `${n.display} (${n.plays})` : "-"}`,
 	);
 }
 if (!trackSetOk) failed = true;

@@ -17,9 +17,9 @@ export function TopTracksTable({
 	}
 
 	return (
-		<div className="overflow-x-auto">
+		<div className="max-h-full overflow-auto">
 			<table className="w-full text-sm">
-				<thead>
+				<thead className="sticky top-0 z-10 bg-background">
 					<tr className="border-b text-left text-xs text-muted-foreground">
 						<th scope="col" className="py-2 pr-2 font-medium">
 							#
@@ -52,7 +52,7 @@ export function TopTracksTable({
 							<td className="py-2 pr-2 font-medium">{t.title}</td>
 							{showArtist && (
 								<td className="py-2 pr-2 text-muted-foreground">
-									{t.artist ?? "—"}
+									{t.artist ?? "-"}
 								</td>
 							)}
 							<td className="py-2 pr-2 text-right font-mono tabular-nums">

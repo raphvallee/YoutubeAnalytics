@@ -35,7 +35,7 @@ export type TitleStrip =
 /** Longest-prefix match, checked before the loose fallbacks. */
 export function stripTitlePrefix(rawTitle: string): TitleStrip {
 	// Takeout uses non-breaking spaces in some locales; normalize for matching
-	// only — returned titles are sliced from the raw string (1:1 length holds).
+	// only - returned titles are sliced from the raw string (1:1 length holds).
 	const norm = rawTitle.replace(/\s/g, " ");
 	for (const p of WATCH_PREFIXES) {
 		if (norm.startsWith(p)) {

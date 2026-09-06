@@ -1,6 +1,18 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearDataset, db, getDatasetMeta, replaceDataset } from "./db";
+import {
+	allMbReleases,
+	clearDataset,
+	clearMbReleases,
+	db,
+	deleteSnapshot,
+	getDatasetMeta,
+	listSnapshots,
+	loadSnapshotRecords,
+	putMbReleases,
+	replaceDataset,
+	saveSnapshot,
+} from "./db";
 import type { StreamRecord } from "./types";
 
 function rec(overrides: Partial<StreamRecord>): StreamRecord {
@@ -85,5 +97,76 @@ describe("clearDataset", () => {
 		await clearDataset();
 		expect(await db.streams.count()).toBe(0);
 		expect(await getDatasetMeta()).toBeUndefined();
+	});
+});
+
+describe("snapshots", () => {
+	beforeEach(async () => {
+		const existing = await listSnapshots();
+		for (const s of existing) await deleteSnapshot(s.id);
+	});
+
+	it("round-trips name + records, lists newest first", async () => {
+		const records = [rec({ id: "a" }), rec({ id: "b" })];
+		const meta = await saveSnapshot("before second export", records);
+		await saveSnapshot("older", records);
+
+		const list = await listSnapshots();
+		expect(list).toHaveLength(2);
+		expect(list[0]?.name).toBe("older");
+		expect(list[1]?.name).toBe("before second export");
+		expect(list[1]?.rowCount).toBe(2);
+
+		const loaded = await loadSnapshotRecords(meta.id);
+		expect(loaded?.map((r) => r.id)).toEqual(["a", "b"]);
+	});
+
+	it("delete removes meta and data", async () => {
+		const meta = await saveSnapshot("gone soon", [rec({ id: "a" })]);
+		await deleteSnapshot(meta.id);
+		expect(await listSnapshots()).toHaveLength(0);
+		expect(await loadSnapshotRecords(meta.id)).toBeNull();
+	});
+});
+
+describe("mbReleases cache", () => {
+	beforeEach(async () => {
+		await clearMbReleases();
+	});
+
+	it("bulk-puts and overwrites by channelId", async () => {
+		await putMbReleases([
+			{
+				channelId: "UC1",
+				releaseName: "Album",
+				artistName: "Artist",
+				date: "2020-01-01",
+				query: "album",
+				resolvedAt: 1,
+			},
+		]);
+		await putMbReleases([
+			{
+				channelId: "UC1",
+				releaseName: "Album (Deluxe)",
+				artistName: "Artist",
+				date: null,
+				query: "album",
+				resolvedAt: 2,
+			},
+			{
+				channelId: "UC2",
+				releaseName: null,
+				artistName: null,
+				date: null,
+				query: "no hit",
+				resolvedAt: 3,
+			},
+		]);
+		const all = await allMbReleases();
+		expect(all).toHaveLength(2);
+		expect(all.find((r) => r.channelId === "UC1")?.releaseName).toBe(
+			"Album (Deluxe)",
+		);
 	});
 });

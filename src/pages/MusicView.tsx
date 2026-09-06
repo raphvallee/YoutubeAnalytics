@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { autoBucket } from "@/analytics/buckets";
+import { compareArtists } from "@/analytics/compare";
 import { matchLikes } from "@/analytics/likes";
 import {
 	availableYears,
@@ -12,27 +13,41 @@ import {
 	topTracks,
 	trackErasSeries,
 } from "@/analytics/queries";
+import { topReleases } from "@/analytics/releases";
 import { ArtistDrawer } from "@/components/ArtistDrawer";
 import { ArtistLeaderboard } from "@/components/ArtistLeaderboard";
 import { ChartCard } from "@/components/ChartCard";
+import { ComparePicker } from "@/components/ComparePicker";
 import { ArtistAffinityChart } from "@/components/charts/ArtistAffinityChart";
 import { StackedErasChart } from "@/components/charts/StackedErasChart";
+import { TrendLineChart } from "@/components/charts/TrendLineChart";
+import { LoadingDataset } from "@/components/LoadingDataset";
+import { ReleaseLeaderboard } from "@/components/ReleaseLeaderboard";
 import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { TopTracksTable } from "@/components/TopTracksTable";
 import { formatDuration } from "@/lib/format";
 import { useDatasetStore } from "@/state/dataset";
+import { useEnrichmentStore } from "@/state/enrichment";
 import { resolveRange, useFilterStore } from "@/state/filters";
 import { useLikesStore } from "@/state/likes";
+import { useSnapshotsStore } from "@/state/snapshots";
 
 export default function MusicView() {
 	const { status, records, meta, reload } = useDatasetStore();
 	const filterState = useFilterStore();
 	const likes = useLikesStore((s) => s.likes);
 	const likesReload = useLikesStore((s) => s.reload);
+	const snapActive = useSnapshotsStore((s) => s.active);
+	const snapRecords = useSnapshotsStore((s) => s.records);
+	const snapshotsReload = useSnapshotsStore((s) => s.reload);
+	const mbCache = useEnrichmentStore((s) => s.cache);
+	const mbReload = useEnrichmentStore((s) => s.reload);
 
 	useEffect(() => {
 		likesReload();
-	}, [likesReload]);
+		snapshotsReload();
+		mbReload();
+	}, [likesReload, snapshotsReload, mbReload]);
 
 	useEffect(() => {
 		if (status === "idle") reload();
@@ -68,6 +83,7 @@ export default function MusicView() {
 		[likes, records],
 	);
 
+	// Phase 6 snapshot compare (computed only while a snapshot is selected).
 	const [selected, setSelected] = useState<{
 		key: string;
 		name: string;
@@ -75,6 +91,33 @@ export default function MusicView() {
 	const [expand, setExpand] = useState(false);
 
 	const affinityBucket = autoBucket(range.from, range.to);
+	const currentTrend = useMemo(
+		() => scopedSeries(records, range, affinityBucket, {}, { kind: "music" }),
+		[records, range, affinityBucket],
+	);
+	const snapTrend = useMemo(
+		() =>
+			snapRecords
+				? scopedSeries(
+						snapRecords,
+						range,
+						affinityBucket,
+						{},
+						{ kind: "music" },
+					)
+				: null,
+		[snapRecords, range, affinityBucket],
+	);
+	const deltas = useMemo(
+		() =>
+			snapRecords ? compareArtists(artists, snapRecords, range) : undefined,
+		[artists, snapRecords, range],
+	);
+	const releases = useMemo(
+		() => topReleases(records, mbCache, range),
+		[records, mbCache, range],
+	);
+
 	const affinity = useMemo(
 		() =>
 			selected
@@ -112,9 +155,7 @@ export default function MusicView() {
 	);
 
 	if (status !== "ready") {
-		return (
-			<p className="p-6 text-sm text-muted-foreground">Loading dataset…</p>
-		);
+		return <LoadingDataset />;
 	}
 	if (!meta || records.length === 0) {
 		return (
@@ -133,6 +174,7 @@ export default function MusicView() {
 	return (
 		<div className="space-y-6">
 			<TimeFilterToolbar years={years} />
+			<ComparePicker />
 
 			<section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 				<Stat label="Music plays" value={summary.totalPlays.toLocaleString()} />
@@ -156,8 +198,22 @@ export default function MusicView() {
 					artists={artists}
 					onSelect={(key, name) => setSelected({ key, name })}
 					likesByArtist={likesMatch.total > 0 ? likesMatch.byArtist : undefined}
+					deltas={deltas}
 				/>
 			</ChartCard>
+
+			{snapActive && (
+				<ChartCard
+					title={`Compare: ${snapActive.name}`}
+					subtitle={`Total music plays per ${affinityBucket}, current vs snapshot`}
+				>
+					<TrendLineChart
+						data={currentTrend}
+						compareData={snapTrend ?? undefined}
+						label={`Compare trend: total music plays per ${affinityBucket} for the current dataset and snapshot ${snapActive.name}`}
+					/>
+				</ChartCard>
+			)}
 
 			<ChartCard
 				title="Taste over time"
@@ -196,6 +252,13 @@ export default function MusicView() {
 				subtitle="Monthly plays of the top 8 tracks in range"
 			>
 				<StackedErasChart rows={eras.rows} seriesNames={eras.seriesNames} />
+			</ChartCard>
+
+			<ChartCard
+				title="Releases"
+				subtitle="MusicBrainz-enriched Release-Topic uploads, ranked by plays"
+			>
+				<ReleaseLeaderboard releases={releases} />
 			</ChartCard>
 
 			<ChartCard

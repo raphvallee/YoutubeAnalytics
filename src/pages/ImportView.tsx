@@ -1,6 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LikesUpload } from "@/components/LikesUpload";
+import { MusicBrainzCard } from "@/components/MusicBrainzCard";
+import { SnapshotManager } from "@/components/SnapshotManager";
 import { Button } from "@/components/ui/button";
 import { clearDataset, getDatasetMeta } from "@/db/db";
 import type { DatasetMeta } from "@/db/types";
@@ -11,6 +13,7 @@ import {
 	isStoragePersisted,
 	requestPersistentStorage,
 } from "@/lib/storage";
+import { useDatasetStore } from "@/state/dataset";
 import { useLikesStore } from "@/state/likes";
 
 const PHASE_LABEL: Record<IngestProgress["phase"], string> = {
@@ -20,7 +23,7 @@ const PHASE_LABEL: Record<IngestProgress["phase"], string> = {
 };
 
 function formatDate(ts: number): string {
-	return ts ? new Date(ts).toLocaleString() : "—";
+	return ts ? new Date(ts).toLocaleString() : "-";
 }
 
 export default function ImportView() {
@@ -35,6 +38,7 @@ export default function ImportView() {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [dragging, setDragging] = useState(false);
 	const [importing, setImporting] = useState(false);
+	const [reloading, setReloading] = useState(false);
 	const [progress, setProgress] = useState<IngestProgress | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [storage, setStorage] = useState<{
@@ -70,10 +74,16 @@ export default function ImportView() {
 					onProgress: setProgress,
 				});
 				await requestPersistentStorage();
+				// Other views read the dataset from the in-memory store - re-sync it
+				// (and wait for it, so the UI stays busy until the data is actually
+				// usable) so Music/Overview reflect the new data immediately.
+				setReloading(true);
+				await useDatasetStore.getState().reload();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : String(err));
 			} finally {
 				setImporting(false);
+				setReloading(false);
 				setProgress(null);
 				void refreshStorage();
 			}
@@ -85,14 +95,14 @@ export default function ImportView() {
 		(e: React.DragEvent) => {
 			e.preventDefault();
 			setDragging(false);
-			if (importing) return;
+			if (importing || reloading) return;
 			void startImport(
 				Array.from(e.dataTransfer.files).filter((f) =>
 					f.name.endsWith(".json"),
 				),
 			);
 		},
-		[importing, startImport],
+		[importing, reloading, startImport],
 	);
 
 	const onPick = useCallback(
@@ -103,6 +113,31 @@ export default function ImportView() {
 		[startImport],
 	);
 
+	// Dev only: pull the gitignored watch-history.json from the dev server
+	// (vite exampleHistoryPlugin) so navigating during development doesn't
+	// require re-uploading a Takeout export.
+	const loadExample = useCallback(async () => {
+		if (importing || reloading) return;
+		try {
+			const res = await fetch(
+				`${import.meta.env.BASE_URL}dev/watch-history.json`,
+			);
+			if (!res.ok) {
+				throw new Error(
+					res.status === 404
+						? "No watch-history.json found in the project root - example mode has nothing to load."
+						: `Example fetch failed (HTTP ${res.status}).`,
+				);
+			}
+			const blob = await res.blob();
+			await startImport([
+				new File([blob], "watch-history.json", { type: "application/json" }),
+			]);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		}
+	}, [importing, reloading, startImport]);
+
 	const onClear = useCallback(async () => {
 		if (
 			!window.confirm(
@@ -111,6 +146,7 @@ export default function ImportView() {
 		)
 			return;
 		await clearDataset();
+		await useDatasetStore.getState().reload();
 		void refreshStorage();
 	}, [refreshStorage]);
 
@@ -120,7 +156,7 @@ export default function ImportView() {
 				<h1 className="text-2xl font-semibold">Import</h1>
 				<p className="text-sm text-muted-foreground">
 					Upload <code>watch-history.json</code> from your Google Takeout
-					export. Files are parsed entirely in your browser — nothing is
+					export. Files are parsed entirely in your browser - nothing is
 					uploaded anywhere.
 				</p>
 			</div>
@@ -134,12 +170,12 @@ export default function ImportView() {
 				}}
 				onDragLeave={() => setDragging(false)}
 				onDrop={onDrop}
-				onClick={() => !importing && inputRef.current?.click()}
+				onClick={() => !importing && !reloading && inputRef.current?.click()}
 				className={`flex min-h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
 					dragging
 						? "border-ring bg-accent/40"
 						: "border-border hover:bg-accent/20"
-				} ${importing ? "pointer-events-none opacity-60" : ""}`}
+				} ${importing || reloading ? "pointer-events-none opacity-60" : ""}`}
 			>
 				<input
 					ref={inputRef}
@@ -149,7 +185,14 @@ export default function ImportView() {
 					className="hidden"
 					onChange={onPick}
 				/>
-				{importing && progress ? (
+				{importing && reloading ? (
+					<>
+						<p className="font-medium">Preparing analytics data…</p>
+						<p className="text-sm text-muted-foreground">
+							Loading the dataset into memory
+						</p>
+					</>
+				) : importing && progress ? (
 					<>
 						<p className="font-medium">
 							{PHASE_LABEL[progress.phase]}… (file {progress.fileIndex + 1}/
@@ -173,6 +216,26 @@ export default function ImportView() {
 				)}
 			</button>
 
+			{import.meta.env.DEV && (
+				<div className="flex items-center justify-between gap-4 rounded-lg border border-dashed p-4">
+					<div>
+						<h2 className="font-medium">Example data</h2>
+						<p className="text-sm text-muted-foreground">
+							Loads <code>watch-history.json</code> from the project root via
+							the dev server. Replaces the current dataset. Dev-only.
+						</p>
+					</div>
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={importing || reloading}
+						onClick={() => void loadExample()}
+					>
+						{importing || reloading ? "Loading…" : "Load example"}
+					</Button>
+				</div>
+			)}
+
 			{error && (
 				<div
 					role="alert"
@@ -186,7 +249,12 @@ export default function ImportView() {
 				<div className="rounded-lg border p-4">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-medium">Imported dataset</h2>
-						<Button variant="destructive" size="sm" onClick={onClear}>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={importing || reloading}
+							onClick={onClear}
+						>
 							Clear data
 						</Button>
 					</div>
@@ -228,6 +296,10 @@ export default function ImportView() {
 			)}
 
 			<LikesUpload />
+
+			<SnapshotManager />
+
+			<MusicBrainzCard />
 
 			<div className="rounded-lg border p-4 text-sm">
 				<h2 className="mb-2 font-medium">Browser storage</h2>

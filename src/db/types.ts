@@ -1,4 +1,4 @@
-/** Normalized data model — see docs/BLUEPRINT.md §2.2. */
+/** Normalized data model - see docs/BLUEPRINT.md §2.2. */
 
 export type StreamKind = "music" | "youtube";
 
@@ -11,7 +11,7 @@ export type StreamKind = "music" | "youtube";
 export type ArtistConfidence = "topic" | "parsed" | "unknown";
 
 export interface StreamRecord {
-	/** sha1(`${time}::${videoId ?? titleUrl ?? title}`) hex — also the dedupe key. */
+	/** sha1(`${time}::${videoId ?? titleUrl ?? title}`) hex - also the dedupe key. */
 	id: string;
 	/** Epoch ms from the Takeout `time` field. */
 	ts: number;
@@ -30,7 +30,7 @@ export interface StreamRecord {
 	/** Raw subtitle[0].name from Takeout ("Future - Topic", "Release - Topic", plain channel names). */
 	channel: string | null;
 	channelId: string | null;
-	/** `details` contained "From Google Ads" — excluded from organic analytics filters. */
+	/** `details` contained "From Google Ads" - excluded from organic analytics filters. */
 	adDriven: boolean;
 }
 
@@ -72,4 +72,35 @@ export interface LikedTrack {
 	addedAt: string | null;
 	/** Source playlist file name, for diagnostics. */
 	sourceFile: string;
+}
+
+/** Snapshot metadata (records live in the parallel `snapshotData` table). */
+export interface DatasetSnapshot {
+	id: string;
+	name: string;
+	createdAt: number;
+	rowCount: number;
+}
+
+/** Blob half of a snapshot: the full in-memory record array, keyed by snapshot id. */
+export interface SnapshotData {
+	id: string;
+	records: StreamRecord[];
+}
+
+/**
+ * One resolved MusicBrainz lookup (Phase 6, opt-in enrichment - BLUEPRINT
+ * §2.5): a "Release - Topic" channelId joined to a release + artist name.
+ * Cached so enrichment runs once per channelId.
+ */
+export interface MbRelease {
+	/** YouTube channelId of the "Release - Topic" channel. */
+	channelId: string;
+	releaseName: string | null;
+	artistName: string | null;
+	/** Release date string as MusicBrainz emitted it, when present. */
+	date: string | null;
+	/** Search text that produced this result (audit/debug). */
+	query: string;
+	resolvedAt: number;
 }

@@ -1,5 +1,5 @@
 /**
- * Takeout entry normalization — docs/BLUEPRINT.md §2.
+ * Takeout entry normalization - docs/BLUEPRINT.md §2.
  * Pure and testable: no DOM, no Dexie, no worker globals.
  */
 
@@ -12,7 +12,7 @@ import {
 	stripDecorations,
 } from "./titleParse";
 
-/** Exactly what Google emits (fields we ignore are omitted) — BLUEPRINT §2.1. */
+/** Exactly what Google emits (fields we ignore are omitted) - BLUEPRINT §2.1. */
 export interface RawTakeoutEntry {
 	header: string;
 	title: string;
@@ -30,13 +30,13 @@ export type NormalizeResult =
 
 export function classifyKind(header: string, titleUrl?: string): StreamKind {
 	// Real Takeout exports use a non-breaking space (U+00A0) inside
-	// "YouTube Music" — JS \s matches it, so collapse whitespace first.
+	// "YouTube Music" - JS \s matches it, so collapse whitespace first.
 	if (header.replace(/\s+/g, " ") === "YouTube Music") return "music";
 	if (titleUrl) {
 		try {
 			if (new URL(titleUrl).hostname === "music.youtube.com") return "music";
 		} catch {
-			// unparseable URL — fall through
+			// unparseable URL - fall through
 		}
 	}
 	return "youtube";

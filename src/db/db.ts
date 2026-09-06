@@ -2,12 +2,15 @@ import Dexie, { type EntityTable } from "dexie";
 import {
 	DATASET_SCHEMA_VERSION,
 	type DatasetMeta,
+	type DatasetSnapshot,
 	type LikedTrack,
+	type MbRelease,
+	type SnapshotData,
 	type StreamRecord,
 } from "./types";
 
 /**
- * Persistence layer — docs/BLUEPRINT.md §2.2.
+ * Persistence layer - docs/BLUEPRINT.md §2.2.
  *
  * Import semantics: replace the whole dataset (clear + bulkPut in one rw
  * transaction). A snapshot is re-importable, incremental merge is a later
@@ -17,6 +20,9 @@ class AnalyticsDB extends Dexie {
 	streams!: EntityTable<StreamRecord, "id">;
 	meta!: EntityTable<DatasetMeta, "key">;
 	likes!: EntityTable<LikedTrack, "id">;
+	snapshots!: EntityTable<DatasetSnapshot, "id">;
+	snapshotData!: EntityTable<SnapshotData, "id">;
+	mbReleases!: EntityTable<MbRelease, "channelId">;
 
 	constructor() {
 		super("youtube-analytics");
@@ -31,6 +37,16 @@ class AnalyticsDB extends Dexie {
 			streams: "id, ts, kind, artistKey, videoId, [kind+ts], [artistKey+ts]",
 			meta: "key",
 			likes: "id, videoId, artistKey",
+		});
+		// Phase 6: snapshot compare + MusicBrainz release cache. Meta and the
+		// record blob are split so listing snapshots never loads full datasets.
+		this.version(3).stores({
+			streams: "id, ts, kind, artistKey, videoId, [kind+ts], [artistKey+ts]",
+			meta: "key",
+			likes: "id, videoId, artistKey",
+			snapshots: "id, createdAt",
+			snapshotData: "id",
+			mbReleases: "channelId",
 		});
 	}
 }
@@ -132,4 +148,53 @@ export async function likesCount(): Promise<number> {
 
 export async function clearLikes(): Promise<void> {
 	await db.likes.clear();
+}
+
+/** Save the current in-memory dataset as a named snapshot (Phase 6 compare). */
+export async function saveSnapshot(
+	name: string,
+	records: StreamRecord[],
+): Promise<DatasetSnapshot> {
+	const meta: DatasetSnapshot = {
+		id: crypto.randomUUID(),
+		name,
+		createdAt: Date.now(),
+		rowCount: records.length,
+	};
+	await db.transaction("rw", db.snapshots, db.snapshotData, async () => {
+		await db.snapshots.put(meta);
+		await db.snapshotData.put({ id: meta.id, records });
+	});
+	return meta;
+}
+
+export async function listSnapshots(): Promise<DatasetSnapshot[]> {
+	return db.snapshots.orderBy("createdAt").reverse().toArray();
+}
+
+export async function loadSnapshotRecords(
+	id: string,
+): Promise<StreamRecord[] | null> {
+	const row = await db.snapshotData.get(id);
+	return row?.records ?? null;
+}
+
+export async function deleteSnapshot(id: string): Promise<void> {
+	await db.transaction("rw", db.snapshots, db.snapshotData, async () => {
+		await db.snapshots.delete(id);
+		await db.snapshotData.delete(id);
+	});
+}
+
+/** Cache MusicBrainz release lookups (one row per Release-Topic channelId). */
+export async function putMbReleases(releases: MbRelease[]): Promise<void> {
+	await db.mbReleases.bulkPut(releases);
+}
+
+export async function allMbReleases(): Promise<MbRelease[]> {
+	return db.mbReleases.toArray();
+}
+
+export async function clearMbReleases(): Promise<void> {
+	await db.mbReleases.clear();
 }

@@ -1,5 +1,5 @@
 /**
- * Pure aggregation functions over StreamRecord[] — docs/BLUEPRINT.md §3.
+ * Pure aggregation functions over StreamRecord[] - docs/BLUEPRINT.md §3.
  * No React, no DB: O(n) passes, memoized by callers via useMemo.
  */
 
@@ -12,7 +12,7 @@ import {
 	buildBucketSpans,
 } from "./buckets";
 
-/** No per-track durations exist in Takeout — fixed estimate, BLUEPRINT §2.7. */
+/** No per-track durations exist in Takeout - fixed estimate, BLUEPRINT §2.7. */
 export const EST_SECONDS_PER_PLAY = 210;
 
 export interface Range {
@@ -55,7 +55,7 @@ export interface ArtistAgg {
 
 /**
  * Ranked favorite artists (music only, organic). Unattributed rows
- * (artistKey === '') are excluded — BLUEPRINT §3.2.
+ * (artistKey === '') are excluded - BLUEPRINT §3.2.
  */
 export function topArtists(
 	records: StreamRecord[],
@@ -95,7 +95,7 @@ export interface TrackAgg {
 
 /**
  * Top tracks. `artistKey` param scopes to one artist (null = all music).
- * Grouping key is (artistKey, pre-feat track key) — BLUEPRINT §3.5.
+ * Grouping key is (artistKey, pre-feat track key) - BLUEPRINT §3.5.
  */
 export function topTracks(
 	records: StreamRecord[],
@@ -133,7 +133,7 @@ export interface SeriesPoint {
 	plays: number;
 }
 
-/** Single-artist (or scoped) time series, gap-filled with zero weeks — §3.3. */
+/** Single-artist (or scoped) time series, gap-filled with zero weeks - §3.3. */
 export function scopedSeries(
 	records: StreamRecord[],
 	range: Range,

@@ -17,7 +17,7 @@ Status: Approved plan (all decisions locked via stakeholder Q&A)
 | Hosting | **GitHub Pages via GitHub Actions** | Static build, `base: '/<repo>/'` |
 | Likes data | **Optional playlist file upload** | `watch-history.json` contains zero like data (verified). "Liked music" lives in playlist export - user uploads it separately |
 | Album analytics | **Title-parsing + local grouping only** | No album metadata exists anywhere in Takeout; external enrichment rejected for privacy. See §2.5 for the honest degradation of "album" |
-| External API calls | **None, ever** | 100% local-first; the app makes no network requests after load |
+| External API calls | **None, ever** *(one user-approved exception: Phase 6 MusicBrainz enrichment, opt-in + off by default - see Phase 6)* | 100% local-first by default; the only network feature is the explicitly toggled MusicBrainz lookup |
 
 **Ground-truth data profile** (from the real `watch-history.json` in repo root):
 
@@ -402,7 +402,7 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 - [x] Real-data verification script: counts match grep ground truth (39,744 music / 16,556 youtube of 56,300), timing < 5s. *(`bun scripts/verify-ingest.ts`: 56,300 kept, split exact, 372 ms, 0 dropped/dupes, 573 unattributed)*
 - [x] **Checkpoint:** import 23.5MB file < 5s; row counts match; reload keeps data; clear works; storage estimate shown. *(normalize+dedupe 372ms ≪ 5s; DB replace/clear round-trip unit-tested; true browser-reload persistence = manual check when UI is used in a real browser)*
 
-**Phase 1 data traps found in the real file** (now handled + regression-tested): `header` is `"YouTube Music"` with a **non-breaking space** — plain `===` matched zero rows until normalized; 573 music rows have no recoverable artist (mostly `Release - Topic`); zero search rows and zero duplicate rows in this particular export.
+**Phase 1 data traps found in the real file** (now handled + regression-tested): `header` is `"YouTube Music"` with a **non-breaking space** - plain `===` matched zero rows until normalized; 573 music rows have no recoverable artist (mostly `Release - Topic`); zero search rows and zero duplicate rows in this particular export.
 
 ### Phase 2 - Music MVP (2 days)
 
@@ -427,19 +427,23 @@ Design notes from implementation:
 - [x] Oracle: channel + hour counts cross-checked against an independent naive counter on the raw JSON. *(`bun scripts/verify-youtube.ts`: 7,507/7,507 channel (name, views) pairs MATCH, all 24 hour slots MATCH, 31 trend months MATCH)*
 - [x] **Checkpoint:** same gate as Phase 2 (typecheck/check/test/build + oracle OK). *(61/61 tests, biome 51 files clean, build green, all 3 oracles OK, preview smoke 200 on all routes)*
 
-Note: the top "channel" in the real export is `(unknown channel)` (958 views) — rows whose subtitles were stripped by Google (e.g. ads or deleted metadata); expected Takeout behavior.
+Note: the top "channel" in the real export is `(unknown channel)` (958 views) - rows whose subtitles were stripped by Google (e.g. ads or deleted metadata); expected Takeout behavior.
 
 ### Phase 5 - Likes, polish, hardening (2–3 days)
 
-- [x] Likes: playlist CSV/JSON upload, tolerant parser, Dexie `likes` table, videoId-first matching with artist+title fallback, likes column on artist leaderboard. *(`src/ingestion/likesParse.ts` fuzzy-header CSV + JSON array parser (+tests), Dexie schema v2 `likes` table, `matchLikes` in `src/analytics/likes.ts` (strips ` - Topic` on the fallback key), `LikesUpload` on ImportView, likes cell on `ArtistLeaderboard` rendering "—" when absent)*
+- [x] Likes: playlist CSV/JSON upload, tolerant parser, Dexie `likes` table, videoId-first matching with artist+title fallback, likes column on artist leaderboard. *(`src/ingestion/likesParse.ts` fuzzy-header CSV + JSON array parser (+tests), Dexie schema v2 `likes` table, `matchLikes` in `src/analytics/likes.ts` (strips ` - Topic` on the fallback key), `LikesUpload` on ImportView, likes cell on `ArtistLeaderboard` rendering "-" when absent)*
 - [ ] Streaming >100MB fallback path (only if interface churn risk is acceptable - else defer). *deferred per the item's own condition: current `File.text()` path passes the 100MB budget below; no churn risk taken*
 - [x] 100MB synthetic fixture perf pass. *(`bun scripts/perf-100mb.ts`: 104.8MB / 408k rows generated, normalize+dedupe 2,607 ms = 156.5k rows/s, well under the 30s budget)*
 - [x] a11y pass (keyboard nav, aria-labels on charts); error boundaries. *(leaderboard rows focusable + Enter/Space open drawer, all charts wrapped `role="img"` + `aria-label`; `ErrorBoundary` wraps the route tree in `App.tsx`)*
-- [x] **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts. *(`tests/e2e/smoke.spec.ts`, `bun run test:e2e`: 2/2 passed — import fixture, music + overview pages non-empty, empty-state pointer)*
+- [x] **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts. *(`tests/e2e/smoke.spec.ts`, `bun run test:e2e`: 2/2 passed - import fixture, music + overview pages non-empty, empty-state pointer)*
 
-### Phase 6 - Stretch (unscheduled)
+### Phase 6 - Stretch (implemented 2026-09-06, scope decided via stakeholder Q&A)
 
-- `channelId → release` MusicBrainz opt-in enrichment (schema ready, §2.5); PNG export; multi-dataset compare; watch-time heatmap calendar.
+- [x] `channelId → release` MusicBrainz opt-in enrichment (schema ready, §2.5). *(`src/lib/musicbrainz.ts` + `src/state/enrichment.ts`: 1 req/s pacing, cancelable, results cached in Dexie `mbReleases` table keyed by channelId, mock-fetch parse tests; "Release - Topic" channelIds resolved via most-common-track-title search; `ReleaseLeaderboard` card on the Music page joins cache→plays at read time - streams never mutated. **User-approved exception to locked decision #0** ("no external API calls"): the only network feature, off by default behind an explicit toggle in `MusicBrainzCard`)*
+- [x] PNG export. *(`ChartCard` renders a download-as-PNG button per card via `html-to-image`, filename derived from the card title)*
+- [x] Multi-dataset compare - scoped as **snapshot compare** (stakeholder decision). *(`SnapshotManager` on Import: save current dataset under a name, list/delete; Dexie v3 `snapshots` + `snapshotData` tables; Music page `ComparePicker` overlays a snapshot on the favorite-artists leaderboard ("vs snap" delta column with ▲/▼ arrows + %, "new" for absent artists) and a current-vs-snapshot trend line - one axis, legend chips)*
+- [x] Watch-time heatmap calendar. *(`src/analytics/heatmap.ts` day-bucket aggregation + `HeatmapCalendar` GitHub-style month grid on Overview; intensity = quartiles of active days, sequential blue ramp steps 600/500/350/250 validated with the dataviz ordinal checker on the dark surface; tooltip, Less/More legend, role=img summary)*
+- [x] **Checkpoint:** full local gate. *(2026-09-06: biome check 75 files clean, tsc -b clean, 85/85 unit tests, vite build green, Playwright smoke 2/2)*
 
 **Total estimate:** ~11–14 focused days to feature-complete.
 

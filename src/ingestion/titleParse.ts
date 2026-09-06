@@ -7,7 +7,7 @@
 const NOISE_PATTERN =
 	/[([]\s*(official\s+(music\s+)?(video|audio)|lyric[s]?\s+video|lyrics?|audio|video\s+oficial|video|hd|hq|4k|explicit|remaster(ed)?(\s+\d{4})?|visualizer)\s*[)\]]/gi;
 
-/** `feat.` / `ft.` separators — kept in display titles, stripped from track keys. */
+/** `feat.` / `ft.` separators - kept in display titles, stripped from track keys. */
 const FEAT_PATTERN = /[([]?\s*(?:feat|ft|featuring)\.?\s+[^)\]]*[)\]]?/gi;
 
 export function artistKeyOf(name: string): string {
@@ -24,7 +24,7 @@ export function stripDecorations(title: string): string {
 	return title
 		.replace(NOISE_PATTERN, "")
 		.replace(/\s{2,}/g, " ")
-		.replace(/\s+[-–—]\s*$/, "")
+		.replace(/\s+[-–-]\s*$/, "")
 		.trim();
 }
 
@@ -45,7 +45,7 @@ export function parseArtistFromTitle(
 	cleanedTitle: string,
 	channelHint?: string | null,
 ): { artist: string; track: string } | null {
-	const match = /^(.{1,80}?)\s+[-–—]\s+(.{1,80})$/.exec(cleanedTitle);
+	const match = /^(.{1,80}?)\s+[-–-]\s+(.{1,80})$/.exec(cleanedTitle);
 	const left = match?.[1]?.trim();
 	const right = match?.[2]?.trim();
 	if (!left || !right) return null;
@@ -66,7 +66,7 @@ export function parseArtistFromTitle(
 
 /**
  * Artist from an auto-generated Topic channel. Returns null when the channel
- * is the poisoned "Release - Topic" (YouTube strips the artist there) —
+ * is the poisoned "Release - Topic" (YouTube strips the artist there) -
  * docs/BLUEPRINT.md §2.4 step 3a guard.
  */
 export function artistFromTopicChannel(channel: string): string | null {

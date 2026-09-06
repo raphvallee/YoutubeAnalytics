@@ -1,5 +1,5 @@
 /**
- * General YouTube analytics (non-music) — BLUEPRINT §3.7.
+ * General YouTube analytics (non-music) - BLUEPRINT §3.7.
  * Same contract as queries.ts: pure O(n) passes over StreamRecord[].
  */
 
@@ -11,13 +11,13 @@ export interface ChannelAgg {
 	channel: string;
 	channelId: string | null;
 	plays: number;
-	/** Earliest play in range — "first watch" trivia layer. */
+	/** Earliest play in range - "first watch" trivia layer. */
 	firstWatch: number | null;
 }
 
 /**
  * Top channels, grouped by channelId when present, else by display name.
- * Includes ad-driven rows? No — organic default matches music queries.
+ * Includes ad-driven rows? No - organic default matches music queries.
  */
 export function topChannels(
 	records: StreamRecord[],
@@ -84,7 +84,7 @@ export interface TrendPoint {
 	plays: number;
 }
 
-/** Monthly (or yearly) viewing trend — youtube kind only. */
+/** Monthly (or yearly) viewing trend - youtube kind only. */
 export function youtubeTrend(
 	records: StreamRecord[],
 	range: Range,
