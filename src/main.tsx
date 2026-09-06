@@ -11,7 +11,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
 	<StrictMode>
-		<BrowserRouter>
+		{/* import.meta.env.BASE_URL === "/YoutubeAnalytics/" via vite.config.ts base option */}
+		<BrowserRouter basename={import.meta.env.BASE_URL}>
 			<App />
 		</BrowserRouter>
 	</StrictMode>,

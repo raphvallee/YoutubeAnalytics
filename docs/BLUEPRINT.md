@@ -103,6 +103,7 @@ Google Takeout splits histories into multiple files (`watch-history(1).json`, �
 ### 1.5 GitHub Pages specifics
 
 - Vite `base: '/YoutubeAnalytics/'` (repo name) - set once in `vite.config.ts`; switchable via env for custom-domain deploys.
+- Router must mirror it: `<BrowserRouter basename={import.meta.env.BASE_URL}>` in `src/main.tsx` - otherwise deep links like `/YoutubeAnalytics/music` redirect to a broken bare `/music`. Every URL the app emits must be basename-relative; never hardcode absolute paths.
 - SPA is single-route; no 404 rewrite needed. Still add `404.html` = copy of `index.html` as belt-and-braces.
 - Actions workflow: `oven-sh/setup-bun` → `bun install --frozen-lockfile` → `bun run typecheck && bun run test && bun run build` → upload `dist/` → `actions/deploy-pages`.
 - WASM-free build ⇒ no special headers, COEP/COOP not required.
@@ -382,7 +383,7 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 - [x] `bun create vite` (react-ts) scaffold in repo root. *(Vite 8.2 / React 19.2 / TS 6 template, moved into root)*
 - [x] Tailwind CSS v4 wired via `@tailwindcss/vite` plugin. *(v4.3.3; shadcn theme tokens in `src/index.css`)*
 - [x] shadcn/ui initialized (components.json, aliases, theme tokens). *(shadcn v4 registry, base-ui, Geist Variable font, `Button` + `lib/utils` scaffolded)*
-- [x] Biome configured with lint + format scripts. *(v2.5.12; `lint`/`format`/`check` scripts; `public/` and `*.css` excluded — parser does not accept Tailwind v4 at-rules)*
+- [x] Biome configured with lint + format scripts. *(v2.5.12; `lint`/`format`/`check` scripts; `public/` and `*.css` excluded - parser does not accept Tailwind v4 at-rules)*
 - [x] Vite `base: '/YoutubeAnalytics/'` config. *(verified via `vite preview`: `/YoutubeAnalytics/` returns 200, assets resolve)*
 - [x] react-router with the 3 placeholder routes (`/import`, `/music`, `/overview`). *(react-router v8, sidebar nav + redirect routes)*
 - [x] `storage.persist()` probe utility + storage estimate helper. *(`src/lib/storage.ts`: `requestPersistentStorage`, `isStoragePersisted`, `getStorageEstimate`, `formatBytes`)*
