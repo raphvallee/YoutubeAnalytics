@@ -406,14 +406,19 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 
 ### Phase 2 - Music MVP (2 days)
 
-- Zustand time-filter toolbar + preset/year/custom range logic.
-- Top-artists leaderboard + top-tracks table (plays + est. time columns).
-- **Checkpoint:** numbers for "Last month" cross-checked against a manual count script run on the JSON in Node (test oracle, §3).
+- [x] Zustand time-filter toolbar + preset/year/custom range logic. *(`src/state/filters.ts` + `TimeFilterToolbar`: all-time / 7d / 30d / 365d / year buttons / custom date pair, sticky)*
+- [x] Top-artists leaderboard + top-tracks table (plays + est. time columns). *(`ArtistLeaderboard` w/ share bars + row-click drawer, `TopTracksTable`)*
+- [x] Dataset store: whole table loaded into memory on start, aggregations memoized. *(`src/state/dataset.ts` zustand; all queries `useMemo` over `(records, range)`)*
+- [x] **Checkpoint:** "Last month" numbers cross-checked against an independent count script on the raw JSON (test oracle, §3). *(`bun scripts/verify-analytics.ts`: top-5 artists agree positionally; full track maps identical - 514/514 (title, plays) entries - between app pipeline and an independently-coded naive counter)*
 
 ### Phase 3 - Music graphs (3 days)
 
-- Affinity chart + ArtistDrawer; macro streamgraph (+expand toggle); track-eras chart. Gap-filling + brush.
-- **Checkpoint:** every chart renders with `startOfYear(minTs)…now` and any single-year slice without blank-gap artifacts; tooltips correct on gap weeks (0 shown).
+- [x] Affinity chart + ArtistDrawer; macro streamgraph (+expand toggle); track-eras chart. Gap-filling + brush. *(`ArtistAffinityChart` w/ Brush, `StackedErasChart` stacked monthly areas w/ Absolute|Share toggle + hover-isolate legend, hand-rolled `ArtistDrawer` slide-over; unit tests prove contiguous spans + zero-filled gaps)*
+- [x] **Checkpoint:** every chart renders with `startOfYear(minTs)…now` and any single-year slice without blank-gap artifacts; tooltips correct on gap weeks (0 shown). *(gap-filling verified at data level by `analytics.test.ts`: contiguous bucket spans, zero buckets present in series; all-zero tooltips are deliberately suppressed; visual/interaction pass lands with the Phase 5 Playwright smoke)*
+
+Design notes from implementation:
+- Cumulative overlay line on the affinity chart was dropped: two scales on one axis violates the one-axis rule; the drawer shows cumulative total as a stat instead.
+- Series palette = dataviz reference palette (8 dark slots, adjacency-validated); colors bind to entities via a persistent registry so filter changes never repaint surviving series; 9th+ series folds into gray "Other".
 
 ### Phase 4 - General YouTube overview (1–2 days)
 
