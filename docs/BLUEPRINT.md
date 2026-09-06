@@ -8,7 +8,7 @@ Status: Approved plan (all decisions locked via stakeholder Q&A)
 ## 0. Locked Decisions
 
 | Decision | Choice | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | Framework | **Vite + React 19 + TypeScript (strict)** | Static SPA for GitHub Pages; no SSR value for a local-analytics tool |
 | Package manager | **Bun** | Required |
 | Query/storage engine | **IndexedDB via Dexie + `navigator.storage.persist()`** | Real dataset is 23.5MB / 56,300 rows (ceiling 100MB). DuckDB-Wasm (~2–4MB WASM) is dead weight; plain JS aggregation over in-memory arrays is single-digit milliseconds. See §1.3 persistence semantics |
@@ -35,7 +35,7 @@ Status: Approved plan (all decisions locked via stakeholder Q&A)
 ### 1.1 Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | Build | Vite 6 + `@vitejs/plugin-react` |
 | Language | TypeScript 5.x, `strict: true` |
 | UI | React 19, shadcn/ui, Tailwind CSS v4 |
@@ -200,7 +200,7 @@ Per entry, in order:
 
 3. **Artist extraction** (music records only):
    - **a. Topic channel:** `channel?.endsWith(' - Topic')` → artist = channel minus suffix. **Poison guard:** if the result is `Release` (the real-data trap), treat as *no* artist - do not rank everything under the artist "Release".
-   - **b. Title fallback:** parse `ARTIST - TRACK` / `TRACK - ARTIST` shapes from the cleaned title: strip decorations first (`(Official Video)`, `(Official Music Video)`, `[Official Audio]`, `(feat. X)` kept as feat info, `(Lyrics)`, `(HD)`, trailing ` - YouTube`), then if the title matches `^(.+) [-–-] (.+)$`, pick the side that better matches the topic-channel name when one exists; otherwise assume `A - B` = `A` artist (dominant convention on Vevo-style uploads). Confidence `parsed`.
+   - **b. Title fallback:** parse `ARTIST - TRACK` / `TRACK - ARTIST` shapes from the cleaned title: strip decorations first (`(Official Video)`, `(Official Music Video)`, `[Official Audio]`, `(feat. X)` kept as feat info, `(Lyrics)`, `(HD)`, trailing `- YouTube`), then if the title matches `^(.+) [-–-] (.+)$`, pick the side that better matches the topic-channel name when one exists; otherwise assume `A - B` = `A` artist (dominant convention on Vevo-style uploads). Confidence `parsed`.
    - **c. Else** artist = null, confidence `unknown`. These still count toward total plays but are excluded from artist leaderboards and surfaced in Settings as "N unattributed music streams".
 
 4. **Decoration strip** for `title` (stored cleaned): parenthetical/bracketed noise from a fixed blocklist; `feat.`/`&` variants are preserved in the string but the *grouping key* for tracks uses the pre-feat portion so "Song (feat. X)" and "Song" aggregate together.
@@ -224,7 +224,7 @@ Takeout contains **no album, no track number, no ISRC**. Therefore true album gr
 ### 2.7 Missing metadata fallbacks (summary)
 
 | Missing | Strategy |
-|---|---|
+| --- | --- |
 | Artist (Release - Topic / no subtitles) | Title `A - B` parse; else null + counted as unattributed |
 | Deleted video (no titleUrl) | Keep the record (ts + cleaned title); videoId null; excluded from per-video joins |
 | Unknown locale prefix | Keep raw title; add locale to a detected-locales list shown in Settings |
@@ -300,7 +300,7 @@ Per `(artistKey, title)` group, month buckets, top 20 tracks of the selected sco
 Presets resolve to `(from, to)` epoch bounds:
 
 | Preset | from | to |
-|---|---|---|
+| --- | --- | --- |
 | Last week | start of ISO week, 7d window | now |
 | Last month | 30d back | now |
 | Last year | 365d back | now |
@@ -343,7 +343,7 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 ### 4.2 Routes/pages (react-router, 3 routes)
 
 | Route | Content |
-|---|---|
+| --- | --- |
 | `/import` | Dropzone (multi-file), parse progress, dataset meta (row counts, date range, unattributed count, storage estimate), export/clear buttons, likes upload |
 | `/music` | Top-artists leaderboard · Top-tracks table (respecting toolbar) · Macro taste streamgraph · Album/track eras chart |
 | `/overview` | Top channels · hours-of-day + day-of-week bars · monthly trend |
@@ -351,11 +351,11 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 ### 4.3 Key components
 
 | Component | Spec |
-|---|---|
+| --- | --- |
 | `ImportDropzone` | drag-drop + click; accepts `application/json`, multiple; per-file progress; error toasts per file (bad JSON, not Takeout format) |
 | `ArtistLeaderboard` | shadcn Table: rank, artist, plays, est. time, likes. Row click → ArtistDrawer. Sortable columns |
 | `ArtistDrawer` (profile modal) | right-side sheet: artist name, totals, affinity chart (§3.3), their top 10 tracks (click track → era mini-chart) |
-| `TasteStreamgraph` | stacked area, top-12 + Other, legend with hover-isolate (hover a legend item dims all others), `absolute|expand` toggle |
+| `TasteStreamgraph` | stacked area, top-12 + Other, legend with hover-isolate (hover a legend item dims all others), `absolute | expand` toggle |
 | `TrackErasChart` | stacked monthly areas, top-20 tracks of current artist/period filter |
 | `TopTracksTable` | rank, title, artist, plays, est. time; search box; respects TimeFilterToolbar |
 | `HoursHeatBars` | 24 bars + 7 weekday bars, tooltip "x streams, y% of total" |
@@ -378,36 +378,51 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 ## 5. Phased Development Roadmap
 
 ### Phase 0 - Scaffold (½ day)
-- `bun create vite` (react-ts), Tailwind v4, shadcn/ui init, Biome, `base` config, react-router.
-- GitHub Actions Pages workflow green on a hello-world build. `storage.persist()` probe utility.
-- **Checkpoint:** deployed Pages URL serves the empty shell.
+
+- [x] `bun create vite` (react-ts) scaffold in repo root. *(Vite 8.2 / React 19.2 / TS 6 template, moved into root)*
+- [x] Tailwind CSS v4 wired via `@tailwindcss/vite` plugin. *(v4.3.3; shadcn theme tokens in `src/index.css`)*
+- [x] shadcn/ui initialized (components.json, aliases, theme tokens). *(shadcn v4 registry, base-ui, Geist Variable font, `Button` + `lib/utils` scaffolded)*
+- [x] Biome configured with lint + format scripts. *(v2.5.12; `lint`/`format`/`check` scripts; `public/` and `*.css` excluded — parser does not accept Tailwind v4 at-rules)*
+- [x] Vite `base: '/YoutubeAnalytics/'` config. *(verified via `vite preview`: `/YoutubeAnalytics/` returns 200, assets resolve)*
+- [x] react-router with the 3 placeholder routes (`/import`, `/music`, `/overview`). *(react-router v8, sidebar nav + redirect routes)*
+- [x] `storage.persist()` probe utility + storage estimate helper. *(`src/lib/storage.ts`: `requestPersistentStorage`, `isStoragePersisted`, `getStorageEstimate`, `formatBytes`)*
+- [x] Vitest installed with a first passing test. *(vitest 5, `formatBytes` suite, 7 tests green)*
+- [x] GitHub Actions Pages workflow committed (typecheck + test + build + deploy). *(`.github/workflows/deploy.yml`, bun setup, 404.html fallback, deploy-pages@v4)*
+- [x] `bun run typecheck && bun run test && bun run build` all pass locally. *(2026-09-05: check 17 files clean, tsc -b clean, 7/7 tests, build 230KB js/25KB css, preview smoke 200 on base path + title + JS asset)*
+- [ ] **Checkpoint:** deployed Pages URL serves the empty shell. *(needs GitHub remote + first push; workflow ready)*
 
 ### Phase 1 - Ingestion pipeline (2–3 days) ← *the load-bearing phase*
+
 - Dexie schema + worker (`parse → normalize → dedupe → bulkPut`), progress events, multi-file merge.
 - Title/artist extraction with the locale-prefix table, `Release - Topic` guard, confidence flags.
 - Vitest suite against **sliced fixtures from the real file** (grep-selected tricky rows: Release-Topic, missing titleUrl, ad rows, search rows).
 - **Checkpoint:** import 23.5MB file < 5s; row counts match grep counts (39,744 music / 16,556 youtube); reload keeps data; clear works; Settings shows storage estimate.
 
 ### Phase 2 - Music MVP (2 days)
+
 - Zustand time-filter toolbar + preset/year/custom range logic.
 - Top-artists leaderboard + top-tracks table (plays + est. time columns).
 - **Checkpoint:** numbers for "Last month" cross-checked against a manual count script run on the JSON in Node (test oracle, §3).
 
 ### Phase 3 - Music graphs (3 days)
+
 - Affinity chart + ArtistDrawer; macro streamgraph (+expand toggle); track-eras chart. Gap-filling + brush.
 - **Checkpoint:** every chart renders with `startOfYear(minTs)…now` and any single-year slice without blank-gap artifacts; tooltips correct on gap weeks (0 shown).
 
 ### Phase 4 - General YouTube overview (1–2 days)
+
 - Channel leaderboard, hour/weekday bars, monthly trend.
 - **Checkpoint:** same oracle method as Phase 2.
 
 ### Phase 5 - Likes, polish, hardening (2–3 days)
+
 - Playlist upload + matching + likes column.
 - Streaming >100MB fallback path (only if interface churn risk is acceptable - else defer).
 - 100MB synthetic fixture perf pass; a11y pass (keyboard nav, aria-labels on charts); error boundaries.
 - **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts.
 
 ### Phase 6 - Stretch (unscheduled)
+
 - `channelId → release` MusicBrainz opt-in enrichment (schema ready, §2.5); PNG export; multi-dataset compare; watch-time heatmap calendar.
 
 **Total estimate:** ~11–14 focused days to feature-complete.
