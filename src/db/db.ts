@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from "dexie";
 import {
 	DATASET_SCHEMA_VERSION,
 	type DatasetMeta,
+	type LikedTrack,
 	type StreamRecord,
 } from "./types";
 
@@ -15,6 +16,7 @@ import {
 class AnalyticsDB extends Dexie {
 	streams!: EntityTable<StreamRecord, "id">;
 	meta!: EntityTable<DatasetMeta, "key">;
+	likes!: EntityTable<LikedTrack, "id">;
 
 	constructor() {
 		super("youtube-analytics");
@@ -23,6 +25,12 @@ class AnalyticsDB extends Dexie {
 			// [artistKey+ts] for per-artist affinity queries (Phase 3).
 			streams: "id, ts, kind, artistKey, videoId, [kind+ts], [artistKey+ts]",
 			meta: "key",
+		});
+		// Likes live independently of the watch-history dataset (Phase 5).
+		this.version(2).stores({
+			streams: "id, ts, kind, artistKey, videoId, [kind+ts], [artistKey+ts]",
+			meta: "key",
+			likes: "id, videoId, artistKey",
 		});
 	}
 }
@@ -101,4 +109,27 @@ export async function clearDataset(): Promise<void> {
 		await db.streams.clear();
 		await db.meta.clear();
 	});
+}
+
+/** Replace the likes dataset (likes are independent of watch history). */
+export async function replaceLikes(likes: LikedTrack[]): Promise<number> {
+	await db.transaction("rw", db.likes, async () => {
+		await db.likes.clear();
+		for (let i = 0; i < likes.length; i += 5000) {
+			await db.likes.bulkPut(likes.slice(i, i + 5000));
+		}
+	});
+	return likes.length;
+}
+
+export async function loadAllLikes(): Promise<LikedTrack[]> {
+	return db.likes.toArray();
+}
+
+export async function likesCount(): Promise<number> {
+	return db.likes.count();
+}
+
+export async function clearLikes(): Promise<void> {
+	await db.likes.clear();
 }

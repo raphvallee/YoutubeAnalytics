@@ -15,7 +15,7 @@ export function ChartCard({
 	children: ReactNode;
 }) {
 	return (
-		<section className="rounded-lg border p-4">
+		<section aria-label={title} className="rounded-lg border p-4">
 			<header className="mb-3 flex items-start justify-between gap-4">
 				<div>
 					<h2 className="font-medium">{title}</h2>

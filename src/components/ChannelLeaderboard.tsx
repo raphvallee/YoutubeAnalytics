@@ -17,13 +17,25 @@ export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
 			<table className="w-full text-sm">
 				<thead>
 					<tr className="border-b text-left text-xs text-muted-foreground">
-						<th className="py-2 pr-2 font-medium">#</th>
-						<th className="py-2 pr-2 font-medium">Channel</th>
-						<th className="py-2 pr-2 text-right font-medium">Views</th>
-						<th className="hidden py-2 pr-2 text-right font-medium md:table-cell">
+						<th scope="col" className="py-2 pr-2 font-medium">
+							#
+						</th>
+						<th scope="col" className="py-2 pr-2 font-medium">
+							Channel
+						</th>
+						<th scope="col" className="py-2 pr-2 text-right font-medium">
+							Views
+						</th>
+						<th
+							scope="col"
+							className="hidden py-2 pr-2 text-right font-medium md:table-cell"
+						>
 							First watch
 						</th>
-						<th className="hidden py-2 pl-2 font-medium sm:table-cell">
+						<th
+							scope="col"
+							className="hidden py-2 pl-2 font-medium sm:table-cell"
+						>
 							Share
 						</th>
 					</tr>

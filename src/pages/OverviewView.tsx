@@ -117,7 +117,10 @@ export default function OverviewView() {
 					trendBucket === "month" ? "Views per month" : "Views per year"
 				}
 			>
-				<TrendLineChart data={trend} />
+				<TrendLineChart
+					data={trend}
+					label={`Viewing trend line chart, views per ${trendBucket}`}
+				/>
 			</ChartCard>
 
 			<div className="grid gap-6 lg:grid-cols-2">
@@ -126,14 +129,20 @@ export default function OverviewView() {
 					subtitle="Local time of day, peak hour highlighted"
 					height={280}
 				>
-					<BarsChart data={hourData} />
+					<BarsChart
+						data={hourData}
+						label="Bar chart of views by hour of day, 24 bars"
+					/>
 				</ChartCard>
 				<ChartCard
 					title="Day of week"
 					subtitle="Views per weekday"
 					height={280}
 				>
-					<BarsChart data={weekdayData} />
+					<BarsChart
+						data={weekdayData}
+						label="Bar chart of views by weekday, 7 bars"
+					/>
 				</ChartCard>
 			</div>
 		</div>

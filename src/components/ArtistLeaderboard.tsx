@@ -8,9 +8,12 @@ import { formatDuration } from "@/lib/format";
 export function ArtistLeaderboard({
 	artists,
 	onSelect,
+	likesByArtist,
 }: {
 	artists: ArtistAgg[];
 	onSelect: (artistKey: string, artist: string) => void;
+	/** Optional like counts per artistKey; column renders "—" when absent. */
+	likesByArtist?: Map<string, number>;
 }) {
 	const max = artists[0]?.plays ?? 0;
 
@@ -27,11 +30,25 @@ export function ArtistLeaderboard({
 			<table className="w-full text-sm">
 				<thead>
 					<tr className="border-b text-left text-xs text-muted-foreground">
-						<th className="py-2 pr-2 font-medium">#</th>
-						<th className="py-2 pr-2 font-medium">Artist</th>
-						<th className="py-2 pr-2 text-right font-medium">Plays</th>
-						<th className="py-2 pr-2 text-right font-medium">Est. time</th>
-						<th className="hidden py-2 pl-2 font-medium sm:table-cell">
+						<th scope="col" className="py-2 pr-2 font-medium">
+							#
+						</th>
+						<th scope="col" className="py-2 pr-2 font-medium">
+							Artist
+						</th>
+						<th scope="col" className="py-2 pr-2 text-right font-medium">
+							Plays
+						</th>
+						<th scope="col" className="py-2 pr-2 text-right font-medium">
+							Est. time
+						</th>
+						<th scope="col" className="py-2 pr-2 text-right font-medium">
+							Likes
+						</th>
+						<th
+							scope="col"
+							className="hidden py-2 pl-2 font-medium sm:table-cell"
+						>
 							Share
 						</th>
 					</tr>
@@ -40,8 +57,16 @@ export function ArtistLeaderboard({
 					{artists.map((a, i) => (
 						<tr
 							key={a.artistKey}
-							className="cursor-pointer border-b border-border/50 transition-colors last:border-0 hover:bg-accent/40"
+							className="cursor-pointer border-b border-border/50 transition-colors last:border-0 hover:bg-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+							tabIndex={0}
+							aria-label={`Open ${a.artist} profile, ${a.plays} plays`}
 							onClick={() => onSelect(a.artistKey, a.artist)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									onSelect(a.artistKey, a.artist);
+								}
+							}}
 						>
 							<td className="py-2 pr-2 font-mono text-xs text-muted-foreground">
 								{i + 1}
@@ -52,6 +77,9 @@ export function ArtistLeaderboard({
 							</td>
 							<td className="py-2 pr-2 text-right font-mono tabular-nums text-muted-foreground">
 								{formatDuration(estSeconds(a.plays))}
+							</td>
+							<td className="py-2 pr-2 text-right font-mono tabular-nums text-muted-foreground">
+								{likesByArtist?.get(a.artistKey)?.toLocaleString() ?? "—"}
 							</td>
 							<td className="hidden py-2 pl-2 sm:table-cell">
 								<div

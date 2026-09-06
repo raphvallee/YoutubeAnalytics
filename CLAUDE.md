@@ -20,6 +20,7 @@ bun run dev            # Vite dev server
 bun run typecheck      # tsc -b (also runs as part of build)
 bun run test           # vitest run (all tests)
 bunx vitest run src/lib/storage.test.ts   # single test file
+bun run test:e2e       # Playwright smoke (needs `bunx playwright install chromium` once)
 bun run check          # Biome lint + format + import organization check
 bun run format         # Biome format --write
 bun run build          # typecheck + vite build (CI gate = check + typecheck + test + build)

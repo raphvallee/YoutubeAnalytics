@@ -55,3 +55,21 @@ export interface DatasetMeta {
 	/** Distinct Takeout title prefixes seen before stripping (locale diagnostics). */
 	prefixesSeen: string[];
 }
+
+/**
+ * One row of an uploaded "Liked music"/"Liked videos" playlist export
+ * (BLUEPRINT §2.6). Takeout playlist CSVs vary; we keep whatever identity
+ * fields the file offered and match against streams afterwards.
+ */
+export interface LikedTrack {
+	/** Stable id: videoId when present, else sha1(artist|title). */
+	id: string;
+	videoId: string | null;
+	title: string;
+	/** Channel name from the export (not yet normalized to an artist). */
+	channel: string | null;
+	/** ISO date the video was added to the playlist, when the export has it. */
+	addedAt: string | null;
+	/** Source playlist file name, for diagnostics. */
+	sourceFile: string;
+}

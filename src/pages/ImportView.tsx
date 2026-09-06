@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LikesUpload } from "@/components/LikesUpload";
 import { Button } from "@/components/ui/button";
 import { clearDataset, getDatasetMeta } from "@/db/db";
 import type { DatasetMeta } from "@/db/types";
@@ -10,6 +11,7 @@ import {
 	isStoragePersisted,
 	requestPersistentStorage,
 } from "@/lib/storage";
+import { useLikesStore } from "@/state/likes";
 
 const PHASE_LABEL: Record<IngestProgress["phase"], string> = {
 	read: "Reading file",
@@ -26,6 +28,10 @@ export default function ImportView() {
 		() => getDatasetMeta(),
 		[],
 	);
+	const likesReload = useLikesStore((s) => s.reload);
+	useEffect(() => {
+		likesReload();
+	}, [likesReload]);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [dragging, setDragging] = useState(false);
 	const [importing, setImporting] = useState(false);
@@ -220,6 +226,8 @@ export default function ImportView() {
 					</dl>
 				</div>
 			)}
+
+			<LikesUpload />
 
 			<div className="rounded-lg border p-4 text-sm">
 				<h2 className="mb-2 font-medium">Browser storage</h2>

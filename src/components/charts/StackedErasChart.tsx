@@ -25,11 +25,14 @@ export function StackedErasChart({
 	seriesNames,
 	height = 300,
 	expand = false,
+	label,
 }: {
 	rows: StackRow[];
 	seriesNames: string[];
 	height?: number;
 	expand?: boolean;
+	/** Accessible description; defaults to a summary of the series list. */
+	label?: string;
 }) {
 	const [hovered, setHovered] = useState<string | null>(null);
 
@@ -44,7 +47,17 @@ export function StackedErasChart({
 
 	return (
 		<div className="flex h-full flex-col">
-			<div style={{ height }} className="min-h-0">
+			<div
+				style={{ height }}
+				className="min-h-0"
+				role="img"
+				aria-label={
+					label ??
+					`Stacked area chart over time: ${seriesNames.join(", ") || "no series"}${
+						expand ? " (share of listening)" : ""
+					}`
+				}
+			>
 				<ResponsiveContainer width="100%" height="100%">
 					<AreaChart
 						data={rows}

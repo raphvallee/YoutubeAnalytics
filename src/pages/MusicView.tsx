@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { autoBucket } from "@/analytics/buckets";
+import { matchLikes } from "@/analytics/likes";
 import {
 	availableYears,
 	estSeconds,
@@ -21,10 +22,17 @@ import { TopTracksTable } from "@/components/TopTracksTable";
 import { formatDuration } from "@/lib/format";
 import { useDatasetStore } from "@/state/dataset";
 import { resolveRange, useFilterStore } from "@/state/filters";
+import { useLikesStore } from "@/state/likes";
 
 export default function MusicView() {
 	const { status, records, meta, reload } = useDatasetStore();
 	const filterState = useFilterStore();
+	const likes = useLikesStore((s) => s.likes);
+	const likesReload = useLikesStore((s) => s.reload);
+
+	useEffect(() => {
+		likesReload();
+	}, [likesReload]);
 
 	useEffect(() => {
 		if (status === "idle") reload();
@@ -53,6 +61,11 @@ export default function MusicView() {
 	const eras = useMemo(
 		() => trackErasSeries(records, range, { bucket: "month", topN: 8 }),
 		[records, range],
+	);
+
+	const likesMatch = useMemo(
+		() => matchLikes(likes, records),
+		[likes, records],
 	);
 
 	const [selected, setSelected] = useState<{
@@ -142,6 +155,7 @@ export default function MusicView() {
 				<ArtistLeaderboard
 					artists={artists}
 					onSelect={(key, name) => setSelected({ key, name })}
+					likesByArtist={likesMatch.total > 0 ? likesMatch.byArtist : undefined}
 				/>
 			</ChartCard>
 

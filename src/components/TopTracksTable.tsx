@@ -21,11 +21,23 @@ export function TopTracksTable({
 			<table className="w-full text-sm">
 				<thead>
 					<tr className="border-b text-left text-xs text-muted-foreground">
-						<th className="py-2 pr-2 font-medium">#</th>
-						<th className="py-2 pr-2 font-medium">Track</th>
-						{showArtist && <th className="py-2 pr-2 font-medium">Artist</th>}
-						<th className="py-2 pr-2 text-right font-medium">Plays</th>
-						<th className="py-2 text-right font-medium">Est. time</th>
+						<th scope="col" className="py-2 pr-2 font-medium">
+							#
+						</th>
+						<th scope="col" className="py-2 pr-2 font-medium">
+							Track
+						</th>
+						{showArtist && (
+							<th scope="col" className="py-2 pr-2 font-medium">
+								Artist
+							</th>
+						)}
+						<th scope="col" className="py-2 pr-2 text-right font-medium">
+							Plays
+						</th>
+						<th scope="col" className="py-2 text-right font-medium">
+							Est. time
+						</th>
 					</tr>
 				</thead>
 				<tbody>

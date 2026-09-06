@@ -431,10 +431,11 @@ Note: the top "channel" in the real export is `(unknown channel)` (958 views) �
 
 ### Phase 5 - Likes, polish, hardening (2–3 days)
 
-- Playlist upload + matching + likes column.
-- Streaming >100MB fallback path (only if interface churn risk is acceptable - else defer).
-- 100MB synthetic fixture perf pass; a11y pass (keyboard nav, aria-labels on charts); error boundaries.
-- **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts.
+- [x] Likes: playlist CSV/JSON upload, tolerant parser, Dexie `likes` table, videoId-first matching with artist+title fallback, likes column on artist leaderboard. *(`src/ingestion/likesParse.ts` fuzzy-header CSV + JSON array parser (+tests), Dexie schema v2 `likes` table, `matchLikes` in `src/analytics/likes.ts` (strips ` - Topic` on the fallback key), `LikesUpload` on ImportView, likes cell on `ArtistLeaderboard` rendering "—" when absent)*
+- [ ] Streaming >100MB fallback path (only if interface churn risk is acceptable - else defer). *deferred per the item's own condition: current `File.text()` path passes the 100MB budget below; no churn risk taken*
+- [x] 100MB synthetic fixture perf pass. *(`bun scripts/perf-100mb.ts`: 104.8MB / 408k rows generated, normalize+dedupe 2,607 ms = 156.5k rows/s, well under the 30s budget)*
+- [x] a11y pass (keyboard nav, aria-labels on charts); error boundaries. *(leaderboard rows focusable + Enter/Space open drawer, all charts wrapped `role="img"` + `aria-label`; `ErrorBoundary` wraps the route tree in `App.tsx`)*
+- [x] **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts. *(`tests/e2e/smoke.spec.ts`, `bun run test:e2e`: 2/2 passed — import fixture, music + overview pages non-empty, empty-state pointer)*
 
 ### Phase 6 - Stretch (unscheduled)
 

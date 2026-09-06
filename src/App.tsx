@@ -1,4 +1,5 @@
 import { Navigate, NavLink, Route, Routes } from "react-router";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ImportView from "@/pages/ImportView";
 import MusicView from "@/pages/MusicView";
 import OverviewView from "@/pages/OverviewView";
@@ -12,7 +13,10 @@ const NAV_ITEMS = [
 export default function App() {
 	return (
 		<div className="flex min-h-screen">
-			<nav className="flex w-48 shrink-0 flex-col gap-1 border-r p-4">
+			<nav
+				aria-label="Main navigation"
+				className="flex w-48 shrink-0 flex-col gap-1 border-r p-4"
+			>
 				<span className="mb-4 text-sm font-semibold tracking-tight">
 					YT Analytics
 				</span>
@@ -29,13 +33,15 @@ export default function App() {
 				))}
 			</nav>
 			<main className="flex-1 p-6">
-				<Routes>
-					<Route path="/" element={<Navigate to="/music" replace />} />
-					<Route path="/music" element={<MusicView />} />
-					<Route path="/overview" element={<OverviewView />} />
-					<Route path="/import" element={<ImportView />} />
-					<Route path="*" element={<Navigate to="/music" replace />} />
-				</Routes>
+				<ErrorBoundary>
+					<Routes>
+						<Route path="/" element={<Navigate to="/music" replace />} />
+						<Route path="/music" element={<MusicView />} />
+						<Route path="/overview" element={<OverviewView />} />
+						<Route path="/import" element={<ImportView />} />
+						<Route path="*" element={<Navigate to="/music" replace />} />
+					</Routes>
+				</ErrorBoundary>
 			</main>
 		</div>
 	);

@@ -20,6 +20,10 @@ Thumbs.db
 npm-debug.log*
 bun.lockb.bak
 
+# Playwright artifacts
+test-results/
+playwright-report/
+
 # Env
 .env
 .env.*
