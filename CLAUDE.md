@@ -41,6 +41,6 @@ Three-layer SPA (Vite 8 + React 19 + TS):
 
 1. **Ingestion** (Phase 1, `src/ingestion/` - not yet built): Web Worker parses Takeout JSON (`File.text()` + `JSON.parse`; ≤100MB ceiling, no streaming parser yet), normalizes to `StreamRecord`, dedupes by `sha1(time + videoId)`, bulk-inserts into Dexie (IndexedDB). Normalization details in BLUEPRINT §2 - including locale-prefix stripping (`"Vous avez regardé X"` - the real export is French) and the `"Release - Topic"` artist trap.
 2. **Storage** (`src/db/` - not yet built): Dexie tables `streams` + `meta`. Data persists across sessions; `navigator.storage.persist()` (probed in `src/lib/storage.ts`) prevents eviction. On startup the whole dataset loads into memory; all aggregations are pure O(n) passes in `src/analytics/` (planned) memoized by filter key - no query engine, no WASM (dataset is ~56k rows / ≤100MB).
-3. **UI**: `src/pages/` - three routes (`/music`, `/overview`, `/import`) with a sidebar (`src/App.tsx`). shadcn/ui v4 (base-ui flavor) + Tailwind v4, dark-mode-first. Charts: Recharts. Shared time-filter state: Zustand store (planned).
+3. **UI**: `src/pages/` - three routes (`/music`, `/video`, `/import`) with a sidebar (`src/App.tsx`). shadcn/ui v4 (base-ui flavor) + Tailwind v4, dark-mode-first. Charts: Recharts. Shared time-filter state: Zustand store (planned).
 
 Blueprint phases 0-1 are done/next; `src/lib/storage.ts` and the route shell are Phase 0 output. Future phases add `src/analytics/`, `src/state/`, `src/db/`, `src/ingestion/`.

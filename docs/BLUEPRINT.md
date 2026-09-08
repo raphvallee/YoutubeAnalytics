@@ -56,7 +56,7 @@ Status: Approved plan (all decisions locked via stakeholder Q&A)
 │  React SPA                                                 │
 │  ├─ ImportView        (dropzone, progress, dataset meta)   │
 │  ├─ MusicView         (leaderboards, affinity, eras)       │
-│  ├─ OverviewView      (general YouTube analytics)          │
+│  ├─ VideoView      (general YouTube analytics)          │
 │  └─ Zustand store ──── time-filter toolbar (shared)        │
 │         │                                                  │
 │         ▼ useLiveQuery (Dexie)                             │
@@ -331,7 +331,7 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 ┌──────────────────────────────────────────────────────────┐
 │ Sidebar (icon nav)  │  Content area                      │
 │  ♫ Music            │  ┌──────────────────────────────┐  │
-│  ▶ Overview         │  │ TimeFilterToolbar (sticky)   │  │
+│  ▶ Video         │  │ TimeFilterToolbar (sticky)   │  │
 │  ⬆ Import/Settings  │  │ [presets ▾][year ▾][custom]  │  │
 │                     │  └──────────────────────────────┘  │
 │                     │  …page content…                    │
@@ -347,7 +347,7 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 | --- | --- |
 | `/import` | Dropzone (multi-file), parse progress, dataset meta (row counts, date range, unattributed count, storage estimate), export/clear buttons, likes upload |
 | `/music` | Top-artists leaderboard · Top-tracks table (respecting toolbar) · Macro taste streamgraph · Album/track eras chart |
-| `/overview` | Top channels · hours-of-day + day-of-week bars · monthly trend |
+| `/video` | Top channels · hours-of-day + day-of-week bars · monthly trend |
 
 ### 4.3 Key components
 
@@ -372,7 +372,7 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 
 ### 4.5 Visual design direction
 
-Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for metrics. One accent (music pages) vs. neutral (overview) to reinforce domain separation. shadcn `sheet` for drawer, `toast` (sonner) for import feedback.
+Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for metrics. One accent (music pages) vs. neutral (video) to reinforce domain separation. shadcn `sheet` for drawer, `toast` (sonner) for import feedback.
 
 ---
 
@@ -385,7 +385,7 @@ Dark-first "control room" dashboard. Inter or Geist for UI, tabular numerals for
 - [x] shadcn/ui initialized (components.json, aliases, theme tokens). *(shadcn v4 registry, base-ui, Geist Variable font, `Button` + `lib/utils` scaffolded)*
 - [x] Biome configured with lint + format scripts. *(v2.5.12; `lint`/`format`/`check` scripts; `public/` and `*.css` excluded - parser does not accept Tailwind v4 at-rules)*
 - [x] Vite `base: '/YoutubeAnalytics/'` config. *(verified via `vite preview`: `/YoutubeAnalytics/` returns 200, assets resolve)*
-- [x] react-router with the 3 placeholder routes (`/import`, `/music`, `/overview`). *(react-router v8, sidebar nav + redirect routes)*
+- [x] react-router with the 3 placeholder routes (`/import`, `/music`, `/video`). *(react-router v8, sidebar nav + redirect routes)*
 - [x] `storage.persist()` probe utility + storage estimate helper. *(`src/lib/storage.ts`: `requestPersistentStorage`, `isStoragePersisted`, `getStorageEstimate`, `formatBytes`)*
 - [x] Vitest installed with a first passing test. *(vitest 5, `formatBytes` suite, 7 tests green)*
 - [x] GitHub Actions Pages workflow committed (typecheck + test + build + deploy). *(`.github/workflows/deploy.yml`, bun setup, 404.html fallback, deploy-pages@v4)*
@@ -420,10 +420,10 @@ Design notes from implementation:
 - Cumulative overlay line on the affinity chart was dropped: two scales on one axis violates the one-axis rule; the drawer shows cumulative total as a stat instead.
 - Series palette = dataviz reference palette (8 dark slots, adjacency-validated); colors bind to entities via a persistent registry so filter changes never repaint surviving series; 9th+ series folds into gray "Other".
 
-### Phase 4 - General YouTube overview (1-2 days)
+### Phase 4 - General YouTube video (1-2 days)
 
 - [x] Analytics: top channels (incl. first-watch), hour-of-day + weekday histograms, monthly trend, summary stats. *(`src/analytics/youtube.ts`; channels grouped by channelId, fallback display name; Monday-first weekdays; all pure O(n))*
-- [x] OverviewView: stat tiles, channel leaderboard, bar charts (hours, weekdays), monthly trend line. *(peak hour highlighted in accent; single-series charts need no legend per dataviz rules; shares the time-filter toolbar with Music view)*
+- [x] VideoView: stat tiles, channel leaderboard, bar charts (hours, weekdays), monthly trend line. *(peak hour highlighted in accent; single-series charts need no legend per dataviz rules; shares the time-filter toolbar with Music view)*
 - [x] Oracle: channel + hour counts cross-checked against an independent naive counter on the raw JSON. *(`bun scripts/verify-youtube.ts`: 7,507/7,507 channel (name, views) pairs MATCH, all 24 hour slots MATCH, 31 trend months MATCH)*
 - [x] **Checkpoint:** same gate as Phase 2 (typecheck/check/test/build + oracle OK). *(61/61 tests, biome 51 files clean, build green, all 3 oracles OK, preview smoke 200 on all routes)*
 
@@ -435,14 +435,14 @@ Note: the top "channel" in the real export is `(unknown channel)` (958 views) - 
 - [ ] Streaming >100MB fallback path (only if interface churn risk is acceptable - else defer). *deferred per the item's own condition: current `File.text()` path passes the 100MB budget below; no churn risk taken*
 - [x] 100MB synthetic fixture perf pass. *(`bun scripts/perf-100mb.ts`: 104.8MB / 408k rows generated, normalize+dedupe 2,607 ms = 156.5k rows/s, well under the 30s budget)*
 - [x] a11y pass (keyboard nav, aria-labels on charts); error boundaries. *(leaderboard rows focusable + Enter/Space open drawer, all charts wrapped `role="img"` + `aria-label`; `ErrorBoundary` wraps the route tree in `App.tsx`)*
-- [x] **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts. *(`tests/e2e/smoke.spec.ts`, `bun run test:e2e`: 2/2 passed - import fixture, music + overview pages non-empty, empty-state pointer)*
+- [x] **Checkpoint:** Playwright smoke: import fixture → navigate all pages → assert non-empty charts. *(`tests/e2e/smoke.spec.ts`, `bun run test:e2e`: 2/2 passed - import fixture, music + video pages non-empty, empty-state pointer)*
 
 ### Phase 6 - Stretch (implemented 2026-09-06, scope decided via stakeholder Q&A)
 
 - [x] `channelId → release` MusicBrainz opt-in enrichment (schema ready, §2.5). *(`src/lib/musicbrainz.ts` + `src/state/enrichment.ts`: 1 req/s pacing, cancelable, results cached in Dexie `mbReleases` table keyed by channelId, mock-fetch parse tests; "Release - Topic" channelIds resolved via most-common-track-title search; `ReleaseLeaderboard` card on the Music page joins cache→plays at read time - streams never mutated. **User-approved exception to locked decision #0** ("no external API calls"): the only network feature, off by default behind an explicit toggle in `MusicBrainzCard`)*
 - [x] PNG export. *(`ChartCard` renders a download-as-PNG button per card via `html-to-image`, filename derived from the card title)*
 - [x] Multi-dataset compare - scoped as **snapshot compare** (stakeholder decision). *(`SnapshotManager` on Import: save current dataset under a name, list/delete; Dexie v3 `snapshots` + `snapshotData` tables; Music page `ComparePicker` overlays a snapshot on the favorite-artists leaderboard ("vs snap" delta column with ▲/▼ arrows + %, "new" for absent artists) and a current-vs-snapshot trend line - one axis, legend chips)*
-- [x] Watch-time heatmap calendar. *(`src/analytics/heatmap.ts` day-bucket aggregation + `HeatmapCalendar` GitHub-style month grid on Overview; intensity = quartiles of active days, sequential blue ramp steps 600/500/350/250 validated with the dataviz ordinal checker on the dark surface; tooltip, Less/More legend, role=img summary)*
+- [x] Watch-time heatmap calendar. *(`src/analytics/heatmap.ts` day-bucket aggregation + `HeatmapCalendar` GitHub-style month grid on Video; intensity = quartiles of active days, sequential blue ramp steps 600/500/350/250 validated with the dataviz ordinal checker on the dark surface; tooltip, Less/More legend, role=img summary)*
 - [x] **Checkpoint:** full local gate. *(2026-09-06: biome check 75 files clean, tsc -b clean, 85/85 unit tests, vite build green, Playwright smoke 2/2)*
 
 **Total estimate:** ~11-14 focused days to feature-complete.
@@ -469,7 +469,7 @@ src/
   components/       # shadcn wrappers, ChartCard, toolbar
   db/               # dexie schema, persistence helpers
   ingestion/        # worker, normalize.ts, prefixes.ts, titleParse.ts
-  pages/            # ImportView, MusicView, OverviewView
+  pages/            # ImportView, MusicView, VideoView
   state/            # zustand stores (filters, dataset meta)
   test/fixtures/    # sliced real-file fixtures (committed)
 ```

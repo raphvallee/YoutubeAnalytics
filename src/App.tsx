@@ -4,13 +4,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ImportView from "@/pages/ImportView";
 import MapWorldView from "@/pages/MapWorldView";
 import MusicView from "@/pages/MusicView";
-import OverviewView from "@/pages/OverviewView";
+import VideoView from "@/pages/VideoView";
 import { useDatasetStore } from "@/state/dataset";
 import { useOriginsStore } from "@/state/origins";
 
 const NAV_ITEMS = [
 	{ to: "/music", label: "Music" },
-	{ to: "/overview", label: "Overview" },
+	{ to: "/video", label: "Videos" },
 	{ to: "/map", label: "World Map" },
 	{ to: "/import", label: "Import" },
 ];
@@ -59,7 +59,7 @@ export default function App() {
 					<Routes>
 						<Route path="/" element={<Navigate to="/music" replace />} />
 						<Route path="/music" element={<MusicView />} />
-						<Route path="/overview" element={<OverviewView />} />
+						<Route path="/video" element={<VideoView />} />
 						<Route path="/map" element={<MapWorldView />} />
 						<Route path="/import" element={<ImportView />} />
 						<Route path="*" element={<Navigate to="/music" replace />} />

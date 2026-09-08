@@ -23,7 +23,7 @@ import { resolveRange, useFilterStore } from "@/state/filters";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const ACCENT = SERIES_COLORS[1] ?? "#d95926";
 
-export default function OverviewView() {
+export default function VideoView() {
 	const { status, records, meta, reload } = useDatasetStore();
 	const filterState = useFilterStore();
 

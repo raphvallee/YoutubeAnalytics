@@ -11,7 +11,7 @@ Local-first analytics dashboard for your Google Takeout YouTube & YouTube Music 
 Upload your `watch-history.json` from Google Takeout and explore what you've actually watched:
 
 - 🎵 **Music dashboard** - top artists, favorite tracks, taste evolution over time, track eras, releases (MusicBrainz-enriched)
-- 📺 **Overview dashboard** - top channels, peak viewing hours, day-of-week patterns, monthly trend, watch-time calendar heatmap
+- 📺 **Video dashboard** - top channels, peak viewing hours, day-of-week patterns, monthly trend, watch-time calendar heatmap
 - 🌍 **World map** - where your favorite artists come from (birth/foundation place)
 - 📸 Snapshot compare - overlay a past dataset against the current one
 - ⚡ PNG export - download any chart as an image
@@ -29,7 +29,7 @@ All data is stored locally in IndexedDB. Nothing is uploaded anywhere by default
     4. Click on Next and download your data once it is ready
 2. Open the app at <https://raphvallee.github.io/YoutubeAnalytics/> (or run it locally - see below).
 3. Drag & drop (or click to browse) your `watch-history.json` on the **Import** page.
-4. Wait for the parse progress bar, then explore the **Music** or **Overview** tabs.
+4. Wait for the parse progress bar, then explore the **Music** or **Video** tabs.
 
 > The import replaces the current dataset entirely (simplest correct semantics for a replaceable snapshot). Incremental merge is planned.
 
@@ -109,7 +109,7 @@ src/
   db/          Dexie schema + dataset CRUD
   ingestion/   worker + normalize + titleParse + prefixes
   lib/         format, palette, storage, iso, geo, musicbrainz, mbArtist, geocode, heat, mapZoom
-  pages/       ImportView, MusicView, OverviewView, MapWorldView
+  pages/       ImportView, MusicView, VideoView, MapWorldView
   state/       zustand stores (dataset, filters, likes, snapshots, enrichment, origins)
   test/fixtures/ sliced real-file fixtures
 ```

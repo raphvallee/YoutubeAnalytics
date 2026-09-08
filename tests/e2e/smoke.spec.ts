@@ -10,7 +10,7 @@ const FIXTURE = fileURLToPath(
  * import fixture → navigate all pages → assert non-empty content.
  * Each test gets a fresh browser context = fresh IndexedDB.
  */
-test("import fixture, then music + overview pages render data", async ({
+test("import fixture, then music + video pages render data", async ({
 	page,
 }) => {
 	await page.goto("/YoutubeAnalytics/import");
@@ -31,8 +31,8 @@ test("import fixture, then music + overview pages render data", async ({
 	).toBeVisible();
 	await expect(page.getByText("Taste over time")).toBeVisible();
 
-	// Overview: channel leaderboard non-empty (fixture has 4 youtube rows)
-	await page.goto("/YoutubeAnalytics/overview");
+	// Video: channel leaderboard non-empty (fixture has 4 youtube rows)
+	await page.goto("/YoutubeAnalytics/video");
 	await expect(
 		page.getByRole("heading", { name: "Top channels" }),
 	).toBeVisible();

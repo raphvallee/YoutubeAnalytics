@@ -81,7 +81,7 @@ export default function ImportView() {
         await requestPersistentStorage();
         // Other views read the dataset from the in-memory store - re-sync it
         // (and wait for it, so the UI stays busy until the data is actually
-        // usable) so Music/Overview reflect the new data immediately.
+        // usable) so Music/Video reflect the new data immediately.
         setReloading(true);
         await useDatasetStore.getState().reload();
       } catch (err) {
