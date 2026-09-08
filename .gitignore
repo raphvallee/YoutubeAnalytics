@@ -28,3 +28,4 @@ playwright-report/
 # Env
 .env
 .env.*
+.opencode

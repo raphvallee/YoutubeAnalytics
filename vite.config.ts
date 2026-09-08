@@ -7,15 +7,9 @@ import { defineConfig, type Plugin } from "vite";
 
 const BASE = "/YoutubeAnalytics/";
 
-/**
- * Dev-only endpoint for example mode: streams the gitignored watch-history.json
- * from the repo root so dev navigation doesn't require a fresh Takeout upload.
- * Never runs during build, so the file can't leak into a deployed bundle.
- */
 function exampleHistoryPlugin(): Plugin {
 	return {
 		name: "dev-example-watch-history",
-		apply: "serve",
 		configureServer(server) {
 			server.middlewares.use((req, res, next) => {
 				const url = (req.url ?? "").split("?")[0];
