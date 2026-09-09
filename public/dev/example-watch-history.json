@@ -10,7 +10,9 @@
 			}
 		],
 		"time": "2026-08-15T20:14:32.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -23,7 +25,9 @@
 			}
 		],
 		"time": "2026-08-15T20:10:05.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -36,7 +40,45 @@
 			}
 		],
 		"time": "2026-08-10T17:45:22.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé RACKS BLUE",
+		"titleUrl": "https://music.youtube.com/watch?v=xiIwL1bb1J4",
+		"subtitles": [
+			{
+				"name": "Future - Topic",
+				"url": "https://www.youtube.com/channel/UC1_liDR4fRFJgH4HoJeV8cw"
+			}
+		],
+		"time": "2026-09-05T23:18:45.690Z",
+		"products": [
+			"YouTube"
+		],
+		"activityControls": [
+			"Historique des vidéos regardées sur YouTube"
+		]
+	},
+	{
+		"header": "YouTube Music",
+		"title": "Vous avez regardé Never Stop",
+		"titleUrl": "https://music.youtube.com/watch?v=JQcmaM4t_Tw",
+		"subtitles": [
+			{
+				"name": "Future - Topic",
+				"url": "https://www.youtube.com/channel/UC1_liDR4fRFJgH4HoJeV8cw"
+			}
+		],
+		"time": "2026-09-05T16:00:16.620Z",
+		"products": [
+			"YouTube"
+		],
+		"activityControls": [
+			"Historique des vidéos regardées sur YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -49,7 +91,9 @@
 			}
 		],
 		"time": "2026-07-28T23:30:15.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -62,7 +106,9 @@
 			}
 		],
 		"time": "2026-07-20T03:12:48.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -75,7 +121,9 @@
 			}
 		],
 		"time": "2026-07-14T21:55:30.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -88,7 +136,9 @@
 			}
 		],
 		"time": "2026-06-30T19:22:11.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -101,7 +151,9 @@
 			}
 		],
 		"time": "2026-06-15T14:08:57.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -114,7 +166,9 @@
 			}
 		],
 		"time": "2026-05-22T18:40:03.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -127,7 +181,9 @@
 			}
 		],
 		"time": "2026-05-10T10:33:44.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -140,7 +196,9 @@
 			}
 		],
 		"time": "2026-04-18T22:17:59.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -153,7 +211,9 @@
 			}
 		],
 		"time": "2026-04-05T16:05:31.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -166,7 +226,9 @@
 			}
 		],
 		"time": "2026-03-19T15:42:18.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -179,7 +241,9 @@
 			}
 		],
 		"time": "2026-03-08T19:10:00.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -192,7 +256,9 @@
 			}
 		],
 		"time": "2026-02-14T11:25:37.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -205,7 +271,9 @@
 			}
 		],
 		"time": "2026-02-01T20:38:45.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -218,7 +286,9 @@
 			}
 		],
 		"time": "2026-01-20T14:50:22.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube",
@@ -231,7 +301,9 @@
 			}
 		],
 		"time": "2025-12-31T09:15:42.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -244,7 +316,9 @@
 			}
 		],
 		"time": "2025-12-15T22:00:18.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	},
 	{
 		"header": "YouTube Music",
@@ -257,6 +331,8 @@
 			}
 		],
 		"time": "2025-11-28T17:30:55.000Z",
-		"products": ["YouTube"]
+		"products": [
+			"YouTube"
+		]
 	}
 ]

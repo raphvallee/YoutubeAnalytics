@@ -43,6 +43,8 @@ export default function MapWorldView() {
 	}, [records]);
 
 	const points = useMemo<MapPoint[]>(() => {
+		// Stale cache rows (artist no longer in the imported dataset) have no
+		// plays - only artists actually listened to get displayed.
 		const resolved = cache.filter(
 			(
 				c,
@@ -50,7 +52,11 @@ export default function MapWorldView() {
 				lat: number;
 				lng: number;
 				precision: "city" | "subdivision" | "country";
-			} => c.precision !== "miss" && c.lat !== null && c.lng !== null,
+			} =>
+				c.precision !== "miss" &&
+				c.lat !== null &&
+				c.lng !== null &&
+				(artistPlays.get(c.artistKey)?.plays ?? 0) >= 1,
 		);
 		const groups = new Map<string, MapPoint>();
 		for (const o of resolved) {
@@ -86,10 +92,15 @@ export default function MapWorldView() {
 		() =>
 			new Set(
 				cache
+					.filter(
+						(c) =>
+							c.precision !== "miss" &&
+							(artistPlays.get(c.artistKey)?.plays ?? 0) >= 1,
+					)
 					.map((c) => isoNumeric(c.countryCode))
 					.filter((n): n is string => n !== null),
 			),
-		[cache],
+		[cache, artistPlays],
 	);
 
 	if (status !== "ready") {
