@@ -21,7 +21,10 @@ function exampleHistoryPlugin(): Plugin {
 					next();
 					return;
 				}
-				const file = path.resolve(import.meta.dirname, "watch-history.json");
+				const file = path.resolve(
+					import.meta.dirname,
+					"public/dev/example-watch-history.json",
+				);
 				fs.readFile(file).then(
 					(data) => {
 						res.setHeader("Content-Type", "application/json");
@@ -34,7 +37,7 @@ function exampleHistoryPlugin(): Plugin {
 						res.end(
 							JSON.stringify({
 								error:
-									"No watch-history.json in the project root - example mode has nothing to serve.",
+									"No example data found - public/dev/example-watch-history.json is missing.",
 							}),
 						);
 					},

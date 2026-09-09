@@ -121,9 +121,8 @@ export default function ImportView() {
 		[startImport],
 	);
 
-	// Dev only: pull the gitignored watch-history.json from the dev server
-	// (vite exampleHistoryPlugin) so navigating during development doesn't
-	// require re-uploading a Takeout export.
+	// Pull the example watch-history.json from the static dev endpoint
+	// (public/dev/example-watch-history.json shipped in production builds).
 	const loadExample = useCallback(async () => {
 		if (importing || reloading) return;
 		try {
@@ -133,7 +132,7 @@ export default function ImportView() {
 			if (!res.ok) {
 				throw new Error(
 					res.status === 404
-						? "No watch-history.json found in the project root - example mode has nothing to load."
+						? "No example data available - public/dev/example-watch-history.json is missing."
 						: `Example fetch failed (HTTP ${res.status}).`,
 				);
 			}
@@ -228,8 +227,8 @@ export default function ImportView() {
 				<div>
 					<h2 className="font-medium">Example data</h2>
 					<p className="text-sm text-muted-foreground">
-						Loads <code>watch-history.json</code> from the project root via the
-						dev server. Replaces the current dataset.
+						Loads <code>watch-history.json</code> from the project via the dev
+						server. Replaces the current dataset.
 					</p>
 				</div>
 				<Button
