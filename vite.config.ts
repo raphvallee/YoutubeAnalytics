@@ -1,57 +1,16 @@
 /// <reference types="vitest/config" />
-import fs from "node:fs/promises";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 
 const BASE = "/YoutubeAnalytics/";
-
-function exampleHistoryPlugin(): Plugin {
-	return {
-		name: "dev-example-watch-history",
-		configureServer(server) {
-			server.middlewares.use((req, res, next) => {
-				const url = (req.url ?? "").split("?")[0];
-				const endpoint = `${BASE}dev/watch-history.json`;
-				if (
-					req.method !== "GET" ||
-					(url !== endpoint && url !== "/dev/watch-history.json")
-				) {
-					next();
-					return;
-				}
-				const file = path.resolve(
-					import.meta.dirname,
-					"public/dev/example-watch-history.json",
-				);
-				fs.readFile(file).then(
-					(data) => {
-						res.setHeader("Content-Type", "application/json");
-						res.setHeader("Content-Length", data.byteLength);
-						res.end(data);
-					},
-					() => {
-						res.statusCode = 404;
-						res.setHeader("Content-Type", "application/json");
-						res.end(
-							JSON.stringify({
-								error:
-									"No example data found - public/dev/example-watch-history.json is missing.",
-							}),
-						);
-					},
-				);
-			});
-		},
-	};
-}
 
 // https://vite.dev/config/
 export default defineConfig({
 	// GitHub Pages project site: https://<user>.github.io/YoutubeAnalytics/
 	base: BASE,
-	plugins: [exampleHistoryPlugin(), react(), tailwindcss()],
+	plugins: [react(), tailwindcss()],
 	resolve: {
 		alias: {
 			"@": path.resolve(import.meta.dirname, "./src"),

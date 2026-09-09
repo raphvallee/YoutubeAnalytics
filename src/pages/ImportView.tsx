@@ -121,13 +121,13 @@ export default function ImportView() {
 		[startImport],
 	);
 
-	// Pull the example watch-history.json from the static dev endpoint
-	// (public/dev/example-watch-history.json shipped in production builds).
+	// Pull the example fixture (public/dev/example-watch-history.json, served
+	// statically under the base path in dev and on GitHub Pages).
 	const loadExample = useCallback(async () => {
 		if (importing || reloading) return;
 		try {
 			const res = await fetch(
-				`${import.meta.env.BASE_URL}dev/watch-history.json`,
+				`${import.meta.env.BASE_URL}dev/example-watch-history.json`,
 			);
 			if (!res.ok) {
 				throw new Error(
@@ -227,8 +227,8 @@ export default function ImportView() {
 				<div>
 					<h2 className="font-medium">Example data</h2>
 					<p className="text-sm text-muted-foreground">
-						Loads <code>watch-history.json</code> from the project via the dev
-						server. Replaces the current dataset.
+						Loads the bundled <code>example-watch-history.json</code>. Replaces
+						the current dataset.
 					</p>
 				</div>
 				<Button

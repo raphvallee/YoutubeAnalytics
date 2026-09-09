@@ -57,7 +57,7 @@ bun run test:e2e
 bun run check
 ```
 
-The built-in example data is served at `/dev/watch-history.json` so you can click **Load example** on the Import page without uploading your own file.
+The built-in example data is served at `/dev/example-watch-history.json` (bundled in both dev and production builds) so you can click **Load example** on the Import page without uploading your own file.
 
 ---
 
