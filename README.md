@@ -57,7 +57,7 @@ bun run test:e2e
 bun run check
 ```
 
-The dev server exposes `watch-history.json` from the repo root at `/dev/watch-history.json` so you can click **Load example** on the Import page without uploading your own file.
+The built-in example data is served at `/dev/watch-history.json` so you can click **Load example** on the Import page without uploading your own file.
 
 ---
 
