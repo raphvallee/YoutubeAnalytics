@@ -27,7 +27,6 @@ import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { TopTracksTable } from "@/components/TopTracksTable";
 import { formatDuration } from "@/lib/format";
 import { useDatasetStore } from "@/state/dataset";
-import { useEnrichmentStore } from "@/state/enrichment";
 import { resolveRange, useFilterStore } from "@/state/filters";
 import { useLikesStore } from "@/state/likes";
 import { useSnapshotsStore } from "@/state/snapshots";
@@ -40,14 +39,11 @@ export default function MusicView() {
 	const snapActive = useSnapshotsStore((s) => s.active);
 	const snapRecords = useSnapshotsStore((s) => s.records);
 	const snapshotsReload = useSnapshotsStore((s) => s.reload);
-	const mbCache = useEnrichmentStore((s) => s.cache);
-	const mbReload = useEnrichmentStore((s) => s.reload);
 
 	useEffect(() => {
 		likesReload();
 		snapshotsReload();
-		mbReload();
-	}, [likesReload, snapshotsReload, mbReload]);
+	}, [likesReload, snapshotsReload]);
 
 	useEffect(() => {
 		if (status === "idle") reload();
@@ -114,8 +110,8 @@ export default function MusicView() {
 		[artists, snapRecords, range],
 	);
 	const releases = useMemo(
-		() => topReleases(records, mbCache, range),
-		[records, mbCache, range],
+		() => topReleases(records, [], range),
+		[records, range],
 	);
 
 	const affinity = useMemo(
@@ -256,7 +252,7 @@ export default function MusicView() {
 
 			<ChartCard
 				title="Releases"
-				subtitle="MusicBrainz-enriched Release-Topic uploads, ranked by plays"
+				subtitle="'Release - Topic' uploads, ranked by plays"
 			>
 				<ReleaseLeaderboard releases={releases} />
 			</ChartCard>

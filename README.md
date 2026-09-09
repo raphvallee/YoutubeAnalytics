@@ -93,7 +93,6 @@ By default the app is fully offline. Two user-approved network features exist be
 
 | Feature | Default | What it does |
 | --- | --- | --- |
-| **MusicBrainz release enrichment** | Off | Looks up `"Release - Topic"` channelIds → release name + artist, cached locally (1 req/s pacing) |
 | **Artist-origin lookup** | **On** | MusicBrainz artist search + Open-Meteo geocoding for the world map; auto-starts on map open; toggle in Import page |
 
 Every response is cached in IndexedDB so each entity is queried at most once. No other network calls are made.
@@ -108,9 +107,9 @@ src/
   components/  shadcn wrappers, ChartCard, TimeFilterToolbar, leaderboards
   db/          Dexie schema + dataset CRUD
   ingestion/   worker + normalize + titleParse + prefixes
-  lib/         format, palette, storage, iso, geo, musicbrainz, mbArtist, geocode, heat, mapZoom
+  lib/         format, palette, storage, iso, geo, mbArtist, geocode, heat, mapZoom
   pages/       ImportView, MusicView, VideoView, MapWorldView
-  state/       zustand stores (dataset, filters, likes, snapshots, enrichment, origins)
+  state/       zustand stores (dataset, filters, likes, snapshots, origins)
   test/fixtures/ sliced real-file fixtures
 ```
 

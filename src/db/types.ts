@@ -89,9 +89,8 @@ export interface SnapshotData {
 }
 
 /**
- * One resolved MusicBrainz lookup (Phase 6, opt-in enrichment - BLUEPRINT
- * §2.5): a "Release - Topic" channelId joined to a release + artist name.
- * Cached so enrichment runs once per channelId.
+ * One resolved release lookup: a "Release - Topic" channelId joined to a
+ * release + artist name. Cached so lookups run once per channelId.
  */
 export interface MbRelease {
 	/** YouTube channelId of the "Release - Topic" channel. */

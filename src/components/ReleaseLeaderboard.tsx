@@ -1,15 +1,14 @@
 import type { ReleaseAgg } from "@/analytics/releases";
 
 /**
- * Enriched releases (Phase 6): MusicBrainz-resolved "Release - Topic"
- * channelIds ranked by plays. Read-time join - streams are never mutated.
+ * Released ranked by plays. Unresolved "Release - Topic" channelIds are hidden.
  */
 export function ReleaseLeaderboard({ releases }: { releases: ReleaseAgg[] }) {
 	if (releases.length === 0) {
 		return (
 			<p className="py-8 text-center text-sm text-muted-foreground">
-				No enriched releases yet. Upload a Takeout export, then opt in and run
-				MusicBrainz enrichment on the Import page.
+				No enriched releases yet. Upload a Takeout export with "Release - Topic"
+				channels to see them here.
 			</p>
 		);
 	}

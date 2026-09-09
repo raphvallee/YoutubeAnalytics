@@ -5,7 +5,6 @@ import {
 	type DatasetMeta,
 	type DatasetSnapshot,
 	type LikedTrack,
-	type MbRelease,
 	type SnapshotData,
 	type StreamRecord,
 } from "./types";
@@ -23,7 +22,6 @@ class AnalyticsDB extends Dexie {
 	likes!: EntityTable<LikedTrack, "id">;
 	snapshots!: EntityTable<DatasetSnapshot, "id">;
 	snapshotData!: EntityTable<SnapshotData, "id">;
-	mbReleases!: EntityTable<MbRelease, "channelId">;
 	artistOrigins!: EntityTable<ArtistOrigin, "artistKey">;
 
 	constructor() {
@@ -40,7 +38,7 @@ class AnalyticsDB extends Dexie {
 			meta: "key",
 			likes: "id, videoId, artistKey",
 		});
-		// Phase 6: snapshot compare + MusicBrainz release cache. Meta and the
+		// Phase 6: snapshot compare + release cache. Meta and the
 		// record blob are split so listing snapshots never loads full datasets.
 		this.version(3).stores({
 			streams: "id, ts, kind, artistKey, videoId, [kind+ts], [artistKey+ts]",
@@ -48,7 +46,6 @@ class AnalyticsDB extends Dexie {
 			likes: "id, videoId, artistKey",
 			snapshots: "id, createdAt",
 			snapshotData: "id",
-			mbReleases: "channelId",
 		});
 		// Phase 7: artist-origin cache. Keyed by artistKey and deliberately
 		// outside clearDataset() - external lookups are expensive, so a
@@ -59,7 +56,6 @@ class AnalyticsDB extends Dexie {
 			likes: "id, videoId, artistKey",
 			snapshots: "id, createdAt",
 			snapshotData: "id",
-			mbReleases: "channelId",
 			artistOrigins: "artistKey",
 		});
 	}
@@ -198,19 +194,6 @@ export async function deleteSnapshot(id: string): Promise<void> {
 		await db.snapshots.delete(id);
 		await db.snapshotData.delete(id);
 	});
-}
-
-/** Cache MusicBrainz release lookups (one row per Release-Topic channelId). */
-export async function putMbReleases(releases: MbRelease[]): Promise<void> {
-	await db.mbReleases.bulkPut(releases);
-}
-
-export async function allMbReleases(): Promise<MbRelease[]> {
-	return db.mbReleases.toArray();
-}
-
-export async function clearMbReleases(): Promise<void> {
-	await db.mbReleases.clear();
 }
 
 /** Cache artist-origin lookups (one row per artistKey - Phase 7). */

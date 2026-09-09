@@ -2,17 +2,14 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	allArtistOrigins,
-	allMbReleases,
 	clearArtistOrigins,
 	clearDataset,
-	clearMbReleases,
 	db,
 	deleteSnapshot,
 	getDatasetMeta,
 	listSnapshots,
 	loadSnapshotRecords,
 	putArtistOrigins,
-	putMbReleases,
 	replaceDataset,
 	saveSnapshot,
 } from "./db";
@@ -191,47 +188,5 @@ describe("artistOrigins cache", () => {
 		expect(await getDatasetMeta()).toBeUndefined();
 		const all = await allArtistOrigins();
 		expect(all).toHaveLength(2);
-	});
-});
-
-describe("mbReleases cache", () => {
-	beforeEach(async () => {
-		await clearMbReleases();
-	});
-
-	it("bulk-puts and overwrites by channelId", async () => {
-		await putMbReleases([
-			{
-				channelId: "UC1",
-				releaseName: "Album",
-				artistName: "Artist",
-				date: "2020-01-01",
-				query: "album",
-				resolvedAt: 1,
-			},
-		]);
-		await putMbReleases([
-			{
-				channelId: "UC1",
-				releaseName: "Album (Deluxe)",
-				artistName: "Artist",
-				date: null,
-				query: "album",
-				resolvedAt: 2,
-			},
-			{
-				channelId: "UC2",
-				releaseName: null,
-				artistName: null,
-				date: null,
-				query: "no hit",
-				resolvedAt: 3,
-			},
-		]);
-		const all = await allMbReleases();
-		expect(all).toHaveLength(2);
-		expect(all.find((r) => r.channelId === "UC1")?.releaseName).toBe(
-			"Album (Deluxe)",
-		);
 	});
 });

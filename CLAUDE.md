@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Local-first analytics web app for Google Takeout YouTube / YouTube Music exports (`watch-history.json`). Everything runs in the browser - **no external API calls except the two user-approved network features** (Phase 6 MusicBrainz release enrichment; Phase 7 artist-origin lookup via MusicBrainz + Open-Meteo geocoding), each behind a toggle and cached locally. `docs/BLUEPRINT.md` is the governing design doc with locked decisions, data-schema analysis, and a phased roadmap. Read its §0 (locked decisions) and §5 (phases) before starting work.
+Local-first analytics web app for Google Takeout YouTube / YouTube Music exports (`watch-history.json`). Everything runs in the browser - **no external API calls except one user-approved network feature** (Phase 7 artist-origin lookup via MusicBrainz + Open-Meteo geocoding), behind a toggle and cached locally. `docs/BLUEPRINT.md` is the governing design doc with locked decisions, data-schema analysis, and a phased roadmap. Read its §0 (locked decisions) and §5 (phases) before starting work.
 
 ### Workflow rules
 
