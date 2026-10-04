@@ -61,6 +61,36 @@ describe("originTargets", () => {
 			{ artistKey: "b", artist: "B", plays: 1 },
 		]);
 	});
+
+	// A second import replaces the dataset and bumps lifetime plays. The run
+	// loop re-derives its queue from the new records, so artists resolved in
+	// the first pass are excluded by cache and the re-ranked remainder is
+	// returned plays-desc.
+	it("re-ranks by updated lifetime plays and yields only the new artists", () => {
+		const firstPass = [
+			rec({ artistKey: "a", artist: "A", ts: 100 }),
+			rec({ artistKey: "b", artist: "B", ts: 200 }),
+		];
+		// Second import: "c" is brand new and "b" overtakes "a" on lifetime plays.
+		const secondPass = [
+			rec({ id: "n1", artistKey: "a", artist: "A", ts: 100 }),
+			rec({ id: "n2", artistKey: "b", artist: "B", ts: 200 }),
+			rec({ id: "n3", artistKey: "b", artist: "B", ts: 300 }),
+			rec({ id: "n4", artistKey: "b", artist: "B", ts: 400 }),
+			rec({ id: "n5", artistKey: "c", artist: "C", ts: 500 }),
+		];
+		// Cache holds what pass 1 already resolved.
+		expect(originTargets(secondPass, [origin("a"), origin("b")])).toEqual([
+			{ artistKey: "c", artist: "C", plays: 1 },
+		]);
+		// With nothing cached, the re-ranked full order is b (3) then a/c (1).
+		expect(originTargets(secondPass, [])).toEqual([
+			{ artistKey: "b", artist: "B", plays: 3 },
+			{ artistKey: "a", artist: "A", plays: 1 },
+			{ artistKey: "c", artist: "C", plays: 1 },
+		]);
+		expect(originTargets(firstPass, [])).toHaveLength(2);
+	});
 });
 
 describe("originFromLookups", () => {
