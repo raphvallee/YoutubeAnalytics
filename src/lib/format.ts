@@ -4,7 +4,7 @@ export function formatDuration(totalSeconds: number): string {
 	const h = Math.floor(totalSeconds / 3600);
 	const m = Math.floor((totalSeconds % 3600) / 60);
 	const s = Math.floor(totalSeconds % 60);
-	if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+	if (h > 0) return m > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${h}h`;
 	if (m > 0) return `${m}m`;
 	return `${s}s`;
 }
