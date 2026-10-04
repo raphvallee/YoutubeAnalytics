@@ -170,8 +170,6 @@ export const useOriginsStore = create<OriginsState>((set, get) => ({
 	start: () => {
 		if (get().running) return;
 		if (!isOriginLookupOn()) return;
-		const records = useDatasetStore.getState().records;
-		if (records.length === 0) return;
 		// Hydrate the cache from Dexie before computing targets: a
 		// just-opened app may start the run before reload() resolves, and
 		// stale-empty targets would re-query already-cached artists.
@@ -179,6 +177,11 @@ export const useOriginsStore = create<OriginsState>((set, get) => ({
 			const cache = await allArtistOrigins();
 			if (get().running) return;
 			set({ cache });
+			// Records are read after the await, not before: an import may
+			// land during the Dexie read and change the lifetime plays these
+			// targets are ranked by.
+			const records = useDatasetStore.getState().records;
+			if (records.length === 0) return;
 			if (originTargets(records, cache).length === 0) return;
 			const controller = new AbortController();
 			activeController = controller;
@@ -195,19 +198,40 @@ async function runLookups(
 	set: (partial: Partial<OriginsState>) => void,
 	get: () => OriginsState,
 ): Promise<void> {
-	const records = useDatasetStore.getState().records;
-	const targets = originTargets(records, get().cache);
+	// The queue is re-derived, never iterated as a frozen snapshot: a run is
+	// paced at 1 req/s, so a long one routinely outlives an import. Comparing
+	// `records` by reference is a reliable "dataset changed" signal because
+	// `reload()` always sets a freshly-read array.
+	let recordsRef = useDatasetStore.getState().records;
+	let queue = originTargets(recordsRef, get().cache);
+	let i = 0;
+	let done = 0;
 	set({
 		running: true,
 		error: null,
-		progress: { done: 0, total: targets.length },
+		progress: { done, total: queue.length },
 	});
 	const pending: ArtistOrigin[] = [];
 	try {
-		for (let i = 0; i < targets.length; i++) {
+		while (true) {
+			if (i >= queue.length) {
+				// Queue drained. Before declaring victory, check whether an
+				// import replaced the dataset while we were running - the
+				// trigger from App.tsx was dropped by `start()`'s already-running
+				// guard, so this re-check is the only thing that picks up the
+				// new artists (re-ranked by their updated lifetime plays).
+				const records = useDatasetStore.getState().records;
+				if (records === recordsRef) break;
+				recordsRef = records;
+				queue = originTargets(records, get().cache);
+				i = 0;
+				set({ progress: { done, total: done + queue.length } });
+				continue;
+			}
 			signal.throwIfAborted();
-			const target = targets[i];
+			const target = queue[i];
 			if (!target) break;
+			i += 1;
 
 			let mb: MbArtistHit | null = null;
 			try {
@@ -230,7 +254,10 @@ async function runLookups(
 				resolvedAt: Date.now(),
 				...originFromLookups(mb, geo, centroid),
 			});
-			set({ progress: { done: i + 1, total: targets.length } });
+			done += 1;
+			// `total` counts known work outstanding, so it grows when an
+			// import adds artists mid-run instead of leaving done > total.
+			set({ progress: { done, total: done + queue.length - i } });
 			// Persist in small batches and grow the cache live so the map
 			// fills in while a long run is still going.
 			if (pending.length >= 5) {
