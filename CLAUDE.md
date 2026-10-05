@@ -11,6 +11,7 @@ Local-first analytics web app for Google Takeout YouTube / YouTube Music exports
 - **Always use the `milestone-completion` skill** when implementing or verifying blueprint phases; check off items in `docs/BLUEPRINT.md` §5 as they are completed, with evidence.
 - Package manager is **Bun**, never npm/yarn/pnpm.
 - Hosting is GitHub Pages (project site at `https://raphvallee.github.io/YoutubeAnalytics/`), deployed via `.github/workflows/deploy.yml`.
+- Pull requests are gated by `.github/workflows/ci.yml` (two jobs: check/typecheck/test/build, then the Playwright smoke against that build). Add new gates there, not only in `deploy.yml`.
 
 ## Commands
 
@@ -23,7 +24,7 @@ bunx vitest run src/lib/storage.test.ts   # single test file
 bun run test:e2e       # Playwright smoke (needs `bunx playwright install chromium` once)
 bun run check          # Biome lint + format + import organization check
 bun run format         # Biome format --write
-bun run build          # typecheck + vite build (CI gate = check + typecheck + test + build)
+bun run build          # typecheck + vite build (CI gate = check + typecheck + test + build, plus test:e2e on PRs)
 bun run preview        # serve dist/ locally
 ```
 
