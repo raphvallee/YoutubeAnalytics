@@ -143,7 +143,8 @@ export default function MusicView() {
 	const data = dashboard.data;
 	// A page-mount request always resolves, so a null here means the worker
 	// died between the render and the answer.
-	if (!data) return <PageSkeleton label="Could not load this page" />;
+	if (!data && dashboard.error) throw new Error(dashboard.error);
+	if (!data) return <PageSkeleton />;
 
 	// No release-enrichment data source is wired up (there is no `mbReleases`
 	// table and no writer), so `topReleases` could only ever return []. Computing

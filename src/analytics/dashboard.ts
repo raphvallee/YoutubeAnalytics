@@ -157,7 +157,7 @@ export function videoDashboard(
 		hours: histograms.hours,
 		weekdays: histograms.weekdays,
 		trend: youtubeTrend(records, range, bucket),
-		calendar: buildCalendar(records),
+		calendar: buildCalendar(records, range),
 	};
 }
 

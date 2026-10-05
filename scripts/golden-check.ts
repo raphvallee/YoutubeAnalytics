@@ -317,14 +317,85 @@ for (const [name, range] of RANGES) {
 	);
 }
 
-// The calendar deliberately ignores `range` (infinite window by design), so it is
-// checked once, globally.
+// The baseline calendar ignores `range` (infinite window by design); the current
+// one is range-scoped and tags every cell with `inRange`. Over the full window
+// that flag is true everywhere and the grid is unchanged, so the core
+// {day,count,level} payload must still be byte-identical to the baseline.
+const FULL = { from: Number.NEGATIVE_INFINITY, to: Number.POSITIVE_INFINITY };
+
+/** Drop the range tag so the current grid compares against the baseline grid. */
+function grid(cal: {
+	months: Array<{
+		key: string;
+		label: string;
+		offset: number;
+		days: Array<{ day: number; count: number; level: number }>;
+	}>;
+	total: number;
+	activeDays: number;
+	max: number;
+}) {
+	return {
+		...cal,
+		months: cal.months.map((m) => ({
+			key: m.key,
+			label: m.label,
+			offset: m.offset,
+			days: m.days.map((d) => ({
+				day: d.day,
+				count: d.count,
+				level: d.level,
+			})),
+		})),
+	};
+}
+
 same(
 	"buildCalendar",
 	baseHeat.buildCalendar(records),
-	curHeat.buildCalendar(records),
+	grid(curHeat.buildCalendar(records, FULL)),
 );
-same("dayCounts", baseHeat.dayCounts(records), curHeat.dayCounts(records));
+same(
+	"dayCounts",
+	baseHeat.dayCounts(records),
+	curHeat.dayCounts(records, FULL),
+);
+
+// Range scoping, against counts derived straight from the fixture rather than
+// from the module under test: total must be the organic in-range play count,
+// activeDays the number of distinct local days it covers, and every cell
+// outside the range must carry no count.
+for (const [name, range] of RANGES) {
+	const inRange = records.filter(
+		(r) => r.ts >= range.from && r.ts <= range.to && !r.adDriven,
+	);
+	const distinctDays = new Set(
+		inRange.map((r) =>
+			new Date(
+				new Date(r.ts).getFullYear(),
+				new Date(r.ts).getMonth(),
+				new Date(r.ts).getDate(),
+			).getTime(),
+		),
+	);
+	const cal = curHeat.buildCalendar(records, range);
+	same(`buildCalendar/${name}/total`, inRange.length, cal.total);
+	same(`buildCalendar/${name}/activeDays`, distinctDays.size, cal.activeDays);
+	const outside = cal.months.flatMap((m) => m.days).filter((d) => !d.inRange);
+	same(
+		`buildCalendar/${name}/outside-empty`,
+		true,
+		outside.every((d) => d.count === 0),
+	);
+	// No month outside the window's span may survive the filter.
+	const spansWindow = cal.months.every((m) => {
+		const [y, mo] = m.key.split("-").map(Number) as [number, number];
+		const end = new Date(y, mo, 0, 23, 59, 59, 999).getTime();
+		const start = new Date(y, mo - 1, 1).getTime();
+		return start <= range.to && end >= range.from;
+	});
+	same(`buildCalendar/${name}/spans-window`, true, spansWindow);
+}
 
 console.log(`\n${"-".repeat(70)}`);
 if (failures === 0) {

@@ -83,10 +83,16 @@ export default function App() {
 	}, [status, recordCount, startOrigins]);
 
 	return (
-		<div className="flex min-h-screen">
+		// overflow-x-clip is a backstop: no page-level sideways scroll, ever.
+		// `clip` rather than `hidden` on purpose - `hidden` would turn this into
+		// a scroll container in both axes and break the sidebar's `sticky`.
+		<div className="flex min-h-screen overflow-x-clip">
+			{/* h-screen + sticky keeps the sidebar one viewport tall even when
+			    main scrolls long, so mt-auto pins the repo link to the visible
+			    bottom instead of the bottom of the whole page. */}
 			<nav
 				aria-label="Main navigation"
-				className="flex w-48 shrink-0 flex-col gap-1 border-r p-4"
+				className="sticky top-0 flex h-screen w-48 shrink-0 flex-col gap-1 overflow-y-auto border-r p-4"
 			>
 				<span className="mb-4 text-sm font-semibold tracking-tight">
 					YT Analytics
@@ -115,7 +121,7 @@ export default function App() {
 					GitHub
 				</a>
 			</nav>
-			<main className="flex-1">
+			<main className="min-w-0 flex-1">
 				<AnalyticsProgress />
 				<div className="p-6">
 					<ErrorBoundary>

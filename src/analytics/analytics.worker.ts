@@ -115,9 +115,7 @@ function answer(
 	}
 }
 
-self.onmessage = async (event: MessageEvent<AnalyticsInbound>) => {
-	const message = event.data;
-
+async function handle(message: AnalyticsInbound): Promise<void> {
 	if (message.type === "invalidate") {
 		stale = true;
 		return;
@@ -140,4 +138,11 @@ self.onmessage = async (event: MessageEvent<AnalyticsInbound>) => {
 			message: err instanceof Error ? err.message : String(err),
 		});
 	}
+}
+
+// Serialize reloads and invalidations, so an older IndexedDB read cannot
+// finish after an invalidation and mark stale rows fresh.
+let queue = Promise.resolve();
+self.onmessage = (event: MessageEvent<AnalyticsInbound>) => {
+	queue = queue.then(() => handle(event.data));
 };

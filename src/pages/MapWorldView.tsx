@@ -137,6 +137,7 @@ export default function MapWorldView() {
 	}
 	// The map's own SVG is cheap, but the ranking behind it is a full pass, so
 	// hold the page until that has landed rather than freezing to draw it.
+	if (plays.error && artistPlays === null) throw new Error(plays.error);
 	if (artistPlays === null)
 		return <PageSkeleton label="Ranking your artists" />;
 

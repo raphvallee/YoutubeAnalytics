@@ -90,10 +90,15 @@ export default function VideoView() {
 	if (dashboard.pending) return <PageSkeleton />;
 
 	const data = dashboard.data;
-	if (!data) return <PageSkeleton label="Could not load this page" />;
+	if (!data && dashboard.error) throw new Error(dashboard.error);
+	if (!data) return <PageSkeleton />;
 
 	return (
-		<div className="space-y-6">
+		<div
+			className="space-y-6"
+			data-analytics-view="video"
+			aria-busy={dashboard.refreshing}
+		>
 			<TimeFilterToolbar years={data.years} />
 
 			{dashboard.error && (
@@ -118,7 +123,10 @@ export default function VideoView() {
 				title="Top channels"
 				subtitle={<RangeLabel dataMin={meta.minTs} dataMax={meta.maxTs} />}
 			>
-				<ChannelLeaderboard channels={data.channels} />
+				<ChannelLeaderboard
+					channels={data.channels}
+					unattributed={data.summary.unattributed}
+				/>
 			</ChartCard>
 
 			<ChartCard
@@ -135,7 +143,12 @@ export default function VideoView() {
 
 			<ChartCard
 				title="Watch-time calendar"
-				subtitle="Streams per day across the whole dataset"
+				subtitle={
+					<>
+						Streams per day ·{" "}
+						<RangeLabel dataMin={meta.minTs} dataMax={meta.maxTs} />
+					</>
+				}
 				height={200}
 			>
 				<HeatmapCalendar calendar={data.calendar} />

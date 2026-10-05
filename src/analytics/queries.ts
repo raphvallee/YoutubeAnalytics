@@ -142,7 +142,7 @@ export function artistPlayTotals(
 ): Map<string, { artist: string; plays: number }> {
 	const totals = new Map<string, { artist: string; plays: number }>();
 	for (const r of records) {
-		if (r.kind !== "music" || !r.artistKey || r.adDriven) continue;
+		if (r.kind !== "music" || !r.artistKey) continue;
 		let entry = totals.get(r.artistKey);
 		if (!entry) {
 			entry = { artist: r.artist ?? r.artistKey, plays: 0 };

@@ -252,11 +252,12 @@ describe("likesDashboard", () => {
 });
 
 describe("originPlays", () => {
-	it("ranks lifetime plays per attributed artist and ignores ad rows", () => {
+	it("preserves the map's lifetime plays, including ad rows", () => {
 		const totals = originPlays(R);
 		expect([...totals.entries()].map(([k, v]) => [k, v.plays])).toEqual([
 			["a", 2],
 			["b", 1],
+			["c", 1],
 		]);
 	});
 
