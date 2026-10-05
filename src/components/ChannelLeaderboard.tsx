@@ -4,16 +4,26 @@ import type { ChannelAgg } from "@/analytics/youtube";
 /** YouTube channel leaderboard with share bars and first-watch dates. */
 export const ChannelLeaderboard = memo(function ChannelLeaderboard({
 	channels,
+	unattributed = 0,
 }: {
 	channels: ChannelAgg[];
+	/**
+	 * Views in range that no real channel can be credited for. Shown as a
+	 * footnote so the ranking never silently disagrees with the "Videos
+	 * watched" stat tile - see `channelAttribution.ts`.
+	 */
+	unattributed?: number;
 }) {
 	const max = channels[0]?.plays ?? 0;
 
 	if (channels.length === 0) {
 		return (
-			<p className="py-8 text-center text-sm text-muted-foreground">
-				No YouTube views in this range.
-			</p>
+			<div>
+				<p className="py-8 text-center text-sm text-muted-foreground">
+					No YouTube views in this range.
+				</p>
+				<UnattributedNote unattributed={unattributed} />
+			</div>
 		);
 	}
 
@@ -72,6 +82,23 @@ export const ChannelLeaderboard = memo(function ChannelLeaderboard({
 					))}
 				</tbody>
 			</table>
+			<UnattributedNote unattributed={unattributed} />
 		</div>
 	);
 });
+
+/**
+ * Footnote for views left out of the ranking because they name no channel.
+ * Sticky to the bottom of the scroll area so it stays readable next to a
+ * long table instead of scrolling away under it.
+ */
+function UnattributedNote({ unattributed }: { unattributed: number }) {
+	if (unattributed <= 0) return null;
+	return (
+		<p className="sticky bottom-0 border-t bg-background px-2 py-2 text-xs text-muted-foreground">
+			{unattributed.toLocaleString()} view{unattributed === 1 ? "" : "s"} in
+			this range not ranked - Takeout recorded no channel for{" "}
+			{unattributed === 1 ? "it" : "them"}.
+		</p>
+	);
+}

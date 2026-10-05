@@ -53,13 +53,23 @@ for (const e of entries) {
 	if (normHeader(e.header) === "YouTube Music") continue;
 	if (/music\.youtube\.com/.test(e.titleUrl ?? "")) continue;
 
-	const channel = e.subtitles?.[0]?.name ?? "(unknown channel)";
-	naiveChannels.set(channel, (naiveChannels.get(channel) ?? 0) + 1);
-	naiveHours[new Date(time).getHours()] += 1;
-
 	const d = new Date(time);
+	// Views are counted for every organic youtube row, matching the app's
+	// `totalPlays`, so the trend and hour histograms stay comparable.
+	naiveHours[d.getHours()] += 1;
 	const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 	naiveTrend.set(key, (naiveTrend.get(key) ?? 0) + 1);
+
+	// Channels, re-derived from the raw fields rather than the app helper:
+	// a row counts only if it names a channel *and* has a channel id, or has a
+	// real video behind it. That rejects both the no-subtitles rows and
+	// Takeout's system rows ("Des recommandations...", "Réponse : ...").
+	const name = e.subtitles?.[0]?.name;
+	const hasChannelId = /\/channel\/UC[\w-]+/.test(e.subtitles?.[0]?.url ?? "");
+	const hasVideoId = /\b[?&]v=[\w-]+/.test(e.titleUrl ?? "");
+	if (!name) continue;
+	if (!hasChannelId && !hasVideoId) continue;
+	naiveChannels.set(name, (naiveChannels.get(name) ?? 0) + 1);
 }
 
 // --- 3. compare -------------------------------------------------------------
@@ -87,6 +97,9 @@ console.log(
 );
 console.log(
 	`channels: pipeline=${pipelineChannelPairs.size} naive=${naiveChannels.size} ${channelOk ? "MATCH" : "MISMATCH"}`,
+);
+console.log(
+	`views:     pipeline=${pipelineHours.reduce((a, b) => a + b, 0)} naive=${naiveHours.reduce((a, b) => a + b, 0)}`,
 );
 console.log(`hours: pipeline=[${pipelineHours.join(",")}]`);
 console.log(
