@@ -1,8 +1,14 @@
 import { useSnapshotsStore } from "@/state/snapshots";
 
-/** Snapshot selector for the Music page compare mode (Phase 6). */
+/**
+ * Snapshot selector for the Music page compare mode (Phase 6).
+ *
+ * Selecting is now instant: the rows behind the comparison live in the
+ * analytics worker, so this only records the choice and the compare card shows
+ * its own loading state while the numbers are computed.
+ */
 export function ComparePicker() {
-	const { list, active, select, loading } = useSnapshotsStore();
+	const { list, active, select } = useSnapshotsStore();
 
 	if (list.length === 0) return null;
 
@@ -14,8 +20,7 @@ export function ComparePicker() {
 			<select
 				id="compare-snapshot"
 				value={active?.id ?? ""}
-				disabled={loading}
-				onChange={(e) => void select(e.target.value || null)}
+				onChange={(e) => select(e.target.value || null)}
 				className="rounded-md border bg-transparent px-2 py-1 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
 			>
 				<option value="">Off</option>

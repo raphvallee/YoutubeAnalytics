@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { autoBucket } from "@/analytics/buckets";
-import { compareArtists } from "@/analytics/compare";
-import { matchLikes } from "@/analytics/likes";
-import {
-	availableYears,
-	estSeconds,
-	macroSeries,
-	musicSummary,
-	scopedSeries,
-	topArtists,
-	topTracks,
-	trackErasSeries,
-} from "@/analytics/queries";
+import type { RequestFor } from "@/analytics/protocol";
+import { estSeconds } from "@/analytics/queries";
 import type { ReleaseAgg } from "@/analytics/releases";
 import { ArtistDrawer } from "@/components/ArtistDrawer";
 import { ArtistLeaderboard } from "@/components/ArtistLeaderboard";
@@ -22,6 +12,7 @@ import { ArtistAffinityChart } from "@/components/charts/ArtistAffinityChart";
 import { StackedErasChart } from "@/components/charts/StackedErasChart";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { LoadingDataset } from "@/components/LoadingDataset";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { ReleaseLeaderboard } from "@/components/ReleaseLeaderboard";
 import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { TopTracksTable } from "@/components/TopTracksTable";
@@ -30,22 +21,20 @@ import { useDatasetStore } from "@/state/dataset";
 import { resolveRange, useFilterStore } from "@/state/filters";
 import { useLikesStore } from "@/state/likes";
 import { useSnapshotsStore } from "@/state/snapshots";
+import { useAnalytics } from "@/state/useAnalytics";
 
-/** Rows in the "Top tracks" table, and the ranking depth feeding "Track eras". */
-const TRACK_TABLE_LIMIT = 25;
-/** Series count in the stacked era charts; must match the chart colour palette. */
-const ERAS_SERIES = 8;
 /** See the `releases` memo: there is no release data source to aggregate. */
 const NO_RELEASES: ReleaseAgg[] = [];
 
 export default function MusicView() {
-	const { status, records, meta, reload } = useDatasetStore();
-	const filterState = useFilterStore();
-	const likes = useLikesStore((s) => s.likes);
+	const status = useDatasetStore((s) => s.status);
+	const meta = useDatasetStore((s) => s.meta);
+	const reload = useDatasetStore((s) => s.reload);
+	const likeCount = useLikesStore((s) => s.count);
 	const likesReload = useLikesStore((s) => s.reload);
 	const snapActive = useSnapshotsStore((s) => s.active);
-	const snapRecords = useSnapshotsStore((s) => s.records);
 	const snapshotsReload = useSnapshotsStore((s) => s.reload);
+	const filterState = useFilterStore();
 
 	useEffect(() => {
 		likesReload();
@@ -62,150 +51,67 @@ export default function MusicView() {
 		[filterState, meta],
 	);
 	// Depend on the range's two primitives, not the `range` object. `resolveRange`
-	// mints a fresh object on every call, so an object dep invalidated all nine
-	// query memos below on every filter-store write - including every keystroke in
+	// mints a fresh object on every call, so an object dep invalidated every
+	// request below on every filter-store write - including every keystroke in
 	// the custom-date inputs. Do NOT narrow the deps of the memo above: it calls
 	// `Date.now()` for the relative presets, so keying it on from/to would freeze
 	// "Last 7 days" at whatever instant it first resolved.
 	const { from, to } = range;
+	const affinityBucket = autoBucket(from, to);
 
-	const years = useMemo(() => availableYears(records), [records]);
-	const summary = useMemo(
-		() => musicSummary(records, { from, to }),
-		[records, from, to],
-	);
-	const artists = useMemo(
-		() => topArtists(records, { from, to }, {}, 25),
-		[records, from, to],
-	);
-	const tracks = useMemo(
-		() => topTracks(records, { from, to }, {}, { limit: TRACK_TABLE_LIMIT }),
-		[records, from, to],
-	);
-	const macro = useMemo(
-		() => macroSeries(records, { from, to }, { bucket: "month", topN: 8 }),
-		[records, from, to],
-	);
-	const eras = useMemo(
-		() =>
-			trackErasSeries(
-				records,
-				{ from, to },
-				{
-					bucket: "month",
-					topN: 8,
-					// Reuse the leaderboard's ranking instead of recomputing it.
-					// `topTracks` sorts before it slices, so this slice equals
-					// `topTracks(limit: 8)`.
-					tracks: tracks.slice(0, ERAS_SERIES),
-				},
-			),
-		[records, from, to, tracks],
-	);
-
-	const likesMatch = useMemo(
-		() => matchLikes(likes, records),
-		[likes, records],
-	);
-
-	// Phase 6 snapshot compare (computed only while a snapshot is selected).
+	// Phase 6 snapshot compare. `selected` is the drawer, which only mounts an
+	// artist query once the user picks a row.
 	const [selected, setSelected] = useState<{
 		key: string;
 		name: string;
 	} | null>(null);
 	const [expand, setExpand] = useState(false);
 
-	const affinityBucket = autoBucket(from, to);
-	// Only rendered inside the `{snapActive && ...}` compare card below, so skip
-	// the pass entirely when compare is off. Worth 122ms on short ranges, where
-	// `autoBucket` picks "week".
-	const currentTrend = useMemo(
-		() =>
-			snapActive
-				? scopedSeries(
-						records,
-						{ from, to },
-						affinityBucket,
-						{},
-						{ kind: "music" },
-					)
-				: [],
-		[records, from, to, affinityBucket, snapActive],
+	// One request per page, answered by the worker. Null while the dataset is
+	// still loading, so the worker is never asked to aggregate rows the UI has
+	// not confirmed yet.
+	const ready = status === "ready" && meta !== null;
+	const dashboardRequest = useMemo<RequestFor<"musicDashboard"> | null>(
+		() => (ready ? { name: "musicDashboard", range: { from, to } } : null),
+		[ready, from, to],
 	);
-	const snapTrend = useMemo(
-		() =>
-			snapActive && snapRecords.length > 0
-				? scopedSeries(
-						snapRecords,
-						{ from, to },
-						affinityBucket,
-						{},
-						{ kind: "music" },
-					)
-				: null,
-		[snapRecords, from, to, affinityBucket, snapActive],
-	);
-	// Keyed on `snapActive`, not `snapRecords`: the store initialises `records` to
-	// `[]`, which is truthy, so the old truthiness check always produced a delta
-	// map and the leaderboard rendered "new" against a snapshot that was not
-	// selected.
-	const deltas = useMemo(
-		() =>
-			snapActive
-				? compareArtists(artists, snapRecords, { from, to })
-				: undefined,
-		[artists, snapRecords, from, to, snapActive],
-	);
-	// No release-enrichment data source is wired up (there is no `mbReleases`
-	// table and no writer), so `topReleases` could only ever return []. Computing
-	// it meant a full 120k scan to guarantee an empty list; the card renders its
-	// empty state either way.
-	const releases = NO_RELEASES;
+	const dashboard = useAnalytics(dashboardRequest);
 
-	const affinity = useMemo(
-		() =>
-			selected
-				? scopedSeries(
-						records,
-						{ from, to },
-						affinityBucket,
-						{},
-						{ kind: "music", artistKey: selected.key },
-					)
-				: [],
-		[records, from, to, affinityBucket, selected],
+	// Likes are a separate dataset from an opt-in upload, so a separate request:
+	// uploading one must not invalidate the leaderboard cache.
+	const likesRequest = useMemo<RequestFor<"likesDashboard"> | null>(
+		() => (ready && likeCount > 0 ? { name: "likesDashboard" } : null),
+		[ready, likeCount],
 	);
-	const affinityTotal = useMemo(
-		() => affinity.reduce((s, p) => s + p.plays, 0),
-		[affinity],
-	);
-	const artistTracks = useMemo(
+	const likesMatch = useAnalytics(likesRequest);
+
+	const artistRequest = useMemo<RequestFor<"artistDashboard"> | null>(
 		() =>
-			selected
-				? topTracks(
-						records,
-						{ from, to },
-						{},
-						{ artistKey: selected.key, limit: 10 },
-					)
-				: [],
-		[records, from, to, selected],
-	);
-	const artistEras = useMemo(
-		() =>
-			selected
-				? trackErasSeries(
-						records,
-						{ from, to },
-						{
-							bucket: "month",
-							topN: 8,
-							artistKey: selected.key,
-						},
-					)
+			ready && selected !== null
+				? {
+						name: "artistDashboard",
+						range: { from, to },
+						artistKey: selected.key,
+						bucket: affinityBucket,
+					}
 				: null,
-		[records, from, to, selected],
+		[ready, selected, from, to, affinityBucket],
 	);
+	const artist = useAnalytics(artistRequest);
+
+	// Compare needs the leaderboard rows it will annotate, so it is asked for
+	// only once those exist - not on the empty-range render that precedes them.
+	const compareRequest = useMemo<RequestFor<"compare"> | null>(() => {
+		if (!ready || snapActive === null || dashboard.data === null) return null;
+		return {
+			name: "compare",
+			range: { from, to },
+			bucket: affinityBucket,
+			artists: dashboard.data.artists,
+			snapshotId: snapActive.id,
+		};
+	}, [ready, snapActive, dashboard.data, from, to, affinityBucket]);
+	const compare = useAnalytics(compareRequest);
 
 	// Stable identities so the memoized leaderboard / drawer can actually bail
 	// out. Without these a fresh closure per render defeats React.memo entirely.
@@ -217,7 +123,7 @@ export default function MusicView() {
 	if (status !== "ready") {
 		return <LoadingDataset />;
 	}
-	if (!meta || records.length === 0) {
+	if (!meta || meta.rowCount === 0) {
 		return (
 			<div className="p-6">
 				<p className="text-sm text-muted-foreground">
@@ -230,11 +136,37 @@ export default function MusicView() {
 			</div>
 		);
 	}
+	// First paint after a navigation: no numbers yet, so show the shape of the
+	// page instead of blocking the thread on a synchronous pass over the rows.
+	if (dashboard.pending) return <PageSkeleton />;
+
+	const data = dashboard.data;
+	// A page-mount request always resolves, so a null here means the worker
+	// died between the render and the answer.
+	if (!data && dashboard.error) throw new Error(dashboard.error);
+	if (!data) return <PageSkeleton />;
+
+	// No release-enrichment data source is wired up (there is no `mbReleases`
+	// table and no writer), so `topReleases` could only ever return []. Computing
+	// it meant a full 120k scan to guarantee an empty list; the card renders its
+	// empty state either way.
+	const releases = NO_RELEASES;
+	const summary = data.summary;
+	const likesByArtist =
+		likesMatch.data && likesMatch.data.total > 0
+			? likesMatch.data.byArtist
+			: undefined;
 
 	return (
 		<div className="space-y-6">
-			<TimeFilterToolbar years={years} />
+			<TimeFilterToolbar years={data.years} />
 			<ComparePicker />
+
+			{dashboard.error && (
+				<p role="alert" className="text-sm text-destructive">
+					Could not update these numbers: {dashboard.error}
+				</p>
+			)}
 
 			<section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 				<Stat label="Music plays" value={summary.totalPlays.toLocaleString()} />
@@ -255,22 +187,22 @@ export default function MusicView() {
 				subtitle={<RangeLabelSpan min={meta.minTs} max={meta.maxTs} />}
 			>
 				<ArtistLeaderboard
-					artists={artists}
+					artists={data.artists}
 					onSelect={selectArtist}
-					likesByArtist={likesMatch.total > 0 ? likesMatch.byArtist : undefined}
-					deltas={deltas}
+					likesByArtist={likesByArtist}
+					deltas={compare.data?.deltas ?? undefined}
 				/>
 			</ChartCard>
 
-			{snapActive && (
+			{compare.data && (
 				<ChartCard
-					title={`Compare: ${snapActive.name}`}
+					title={`Compare: ${snapActive?.name ?? ""}`}
 					subtitle={`Total music plays per ${affinityBucket}, current vs snapshot`}
 				>
 					<TrendLineChart
-						data={currentTrend}
-						compareData={snapTrend ?? undefined}
-						label={`Compare trend: total music plays per ${affinityBucket} for the current dataset and snapshot ${snapActive.name}`}
+						data={compare.data.currentTrend}
+						compareData={compare.data.snapshotTrend ?? undefined}
+						label={`Compare trend: total music plays per ${affinityBucket} for the current dataset and snapshot ${snapActive?.name ?? ""}`}
 					/>
 				</ChartCard>
 			)}
@@ -301,8 +233,8 @@ export default function MusicView() {
 				}
 			>
 				<StackedErasChart
-					rows={macro.rows}
-					seriesNames={macro.seriesNames}
+					rows={data.macro.rows}
+					seriesNames={data.macro.seriesNames}
 					expand={expand}
 				/>
 			</ChartCard>
@@ -311,7 +243,10 @@ export default function MusicView() {
 				title="Track eras"
 				subtitle="Monthly plays of the top 8 tracks in range"
 			>
-				<StackedErasChart rows={eras.rows} seriesNames={eras.seriesNames} />
+				<StackedErasChart
+					rows={data.eras.rows}
+					seriesNames={data.eras.seriesNames}
+				/>
 			</ChartCard>
 
 			<ChartCard
@@ -325,7 +260,7 @@ export default function MusicView() {
 				title="Top tracks"
 				subtitle={<RangeLabelSpan min={meta.minTs} max={meta.maxTs} />}
 			>
-				<TopTracksTable tracks={tracks} />
+				<TopTracksTable tracks={data.tracks} />
 			</ChartCard>
 
 			<ArtistDrawer
@@ -335,40 +270,56 @@ export default function MusicView() {
 			>
 				{selected && (
 					<div className="space-y-6">
-						<p className="text-sm text-muted-foreground">
-							{affinityTotal.toLocaleString()} plays · est.{" "}
-							{formatDuration(estSeconds(affinityTotal))} · {label}
-						</p>
-						<div>
-							<h3 className="mb-2 text-sm font-medium">
-								Play frequency (
-								{affinityBucket === "week"
-									? "weekly"
-									: affinityBucket === "month"
-										? "monthly"
-										: "yearly"}
-								)
-							</h3>
-							<div className="h-64">
-								<ArtistAffinityChart points={affinity} />
-							</div>
-						</div>
-						{artistEras && artistEras.seriesNames.length > 0 && (
-							<div>
-								<h3 className="mb-2 text-sm font-medium">
-									Top tracks over time
-								</h3>
-								<StackedErasChart
-									rows={artistEras.rows}
-									seriesNames={artistEras.seriesNames}
-									height={240}
-								/>
-							</div>
+						{artist.pending ? (
+							<p className="text-sm text-muted-foreground">
+								Crunching this artist…
+							</p>
+						) : artist.data ? (
+							<>
+								<p className="text-sm text-muted-foreground">
+									{artist.data.affinityTotal.toLocaleString()} plays · est.{" "}
+									{formatDuration(estSeconds(artist.data.affinityTotal))} ·{" "}
+									{label}
+								</p>
+								<div>
+									<h3 className="mb-2 text-sm font-medium">
+										Play frequency (
+										{affinityBucket === "week"
+											? "weekly"
+											: affinityBucket === "month"
+												? "monthly"
+												: "yearly"}
+										)
+									</h3>
+									<div className="h-64">
+										<ArtistAffinityChart points={artist.data.affinity} />
+									</div>
+								</div>
+								{artist.data.eras.seriesNames.length > 0 && (
+									<div>
+										<h3 className="mb-2 text-sm font-medium">
+											Top tracks over time
+										</h3>
+										<StackedErasChart
+											rows={artist.data.eras.rows}
+											seriesNames={artist.data.eras.seriesNames}
+											height={240}
+										/>
+									</div>
+								)}
+								<div>
+									<h3 className="mb-2 text-sm font-medium">Top tracks</h3>
+									<TopTracksTable
+										tracks={artist.data.tracks}
+										showArtist={false}
+									/>
+								</div>
+							</>
+						) : (
+							<p className="text-sm text-muted-foreground">
+								No data for this artist in range.
+							</p>
 						)}
-						<div>
-							<h3 className="mb-2 text-sm font-medium">Top tracks</h3>
-							<TopTracksTable tracks={artistTracks} showArtist={false} />
-						</div>
 					</div>
 				)}
 			</ArtistDrawer>

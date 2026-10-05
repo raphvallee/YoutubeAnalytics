@@ -203,6 +203,10 @@ test("the watch-time calendar follows the selected period", async ({
 	// assertion that the range actually reaches the calendar. The grid (and with
 	// it the role=img summary) only exists while there is something to draw.
 	const streamsIn = async () => {
+		await expect(page.locator('[data-analytics-view="video"]')).toHaveAttribute(
+			"aria-busy",
+			"false",
+		);
 		await expect(calendar).toBeVisible();
 		const label = await calendar.getAttribute("aria-label");
 		return Number(
@@ -246,10 +250,309 @@ test("the watch-time calendar follows the selected period", async ({
 	await expect(
 		card.getByText("Streams per day · 2026-09-01 → 2026-09-05"),
 	).toBeVisible();
+	await expect(page.locator('[data-analytics-view="video"]')).toHaveAttribute(
+		"aria-busy",
+		"false",
+	);
 	expect(await monthColumns().count()).toBe(1);
 	const windowed = await streamsIn();
 	expect(windowed).toBeGreaterThan(0);
 	expect(windowed).toBeLessThan(allTime);
+});
+
+/** Navigation must remain usable even before the worker delivers its answer. */
+test("navigation remains usable while analytics are pending", async ({
+	page,
+}) => {
+	await page.addInitScript(() => {
+		const NativeWorker = window.Worker;
+		window.Worker = class extends NativeWorker {
+			constructor(url: string | URL, options?: WorkerOptions) {
+				super(url, options);
+				if (!String(url).includes("analytics.worker")) return;
+				let handler: ((event: MessageEvent) => void) | null = null;
+				Object.defineProperty(this, "onmessage", {
+					get: () => handler,
+					set: (value: typeof handler) => {
+						handler = value;
+					},
+				});
+				// Hold answers until the test explicitly releases them. The real
+				// worker still computes, but navigation cannot depend on its reply.
+				const held: MessageEvent[] = [];
+				let released = false;
+				this.addEventListener("message", (event) => {
+					if (released) handler?.(event);
+					else held.push(event);
+				});
+				(
+					window as unknown as { releaseAnalytics: () => void }
+				).releaseAnalytics = () => {
+					released = true;
+					for (const event of held) handler?.(event);
+					held.length = 0;
+				};
+			}
+		};
+	});
+	await page.goto("/YoutubeAnalytics/import");
+	await importFiles(page, FIXTURE);
+	await expect(page.getByText("Imported dataset")).toBeVisible({
+		timeout: 15_000,
+	});
+
+	await page.getByRole("link", { name: "Music", exact: true }).click();
+	await expect(
+		page.getByRole("status").filter({ hasText: "Crunching" }),
+	).toBeVisible();
+	await page.getByRole("link", { name: "Videos", exact: true }).click();
+	await expect(page).toHaveURL(/\/video$/);
+	await expect(
+		page.getByRole("status").filter({ hasText: "Crunching" }),
+	).toBeVisible();
+	await page.getByRole("link", { name: "Import", exact: true }).click();
+	await expect(
+		page.getByRole("heading", { name: "Import", exact: true }),
+	).toBeVisible();
+	await page.evaluate(() => {
+		(window as unknown as { releaseAnalytics: () => void }).releaseAnalytics();
+	});
+
+	// Every page twice: the first visit computes, the second must be served from
+	// the analytics result cache. Levels differ per page (the map leads with an
+	// h1), so match on name alone.
+	for (const _round of [1, 2]) {
+		for (const [link, heading] of [
+			["Music", "Favorite artists"],
+			["Videos", "Top channels"],
+			["World Map", "World map"],
+		] as const) {
+			await page.getByRole("link", { name: link, exact: true }).click();
+			await expect(
+				page.getByRole("heading", { name: heading }).first(),
+			).toBeVisible({ timeout: 15_000 });
+		}
+	}
+});
+
+/**
+ * Write `rows` synthetic rows straight into the app's IndexedDB, then reload.
+ *
+ * The 9-row fixture answers every aggregation in about a millisecond, so the
+ * loading states this suite pins are genuinely never painted - there is nothing
+ * to catch, and asserting on them would be a race. A realistic row count makes
+ * the wait real and the assertion deterministic, without the ~30s of parsing a
+ * 31MB JSON export through the ingestion worker: these tests are about
+ * navigation, and ingestion already has its own coverage.
+ *
+ * Speaks raw IndexedDB rather than importing Dexie into the test: the app has
+ * opened (and therefore versioned) the database by the time this runs, and
+ * duplicating the schema here would let the two drift apart unnoticed.
+ */
+async function seedDataset(page: Page, rows: number): Promise<void> {
+	// The app must have opened the DB before its stores exist to write into.
+	await page.goto("/YoutubeAnalytics/import");
+	await expect(page.getByText("Browser storage")).toBeVisible();
+
+	await page.evaluate(async (count) => {
+		const START = Date.UTC(2016, 0, 1);
+		const SPAN = Date.UTC(2026, 9, 4) - START;
+		const open = indexedDB.open("youtube-analytics");
+		const db = await new Promise<IDBDatabase>((resolve, reject) => {
+			open.onsuccess = () => resolve(open.result);
+			open.onerror = () => reject(open.error);
+		});
+		const done = (tx: IDBTransaction): Promise<void> =>
+			new Promise((resolve, reject) => {
+				tx.oncomplete = () => resolve();
+				tx.onerror = () => reject(tx.error);
+				tx.onabort = () => reject(tx.error);
+			});
+		const write = db.transaction(["streams", "meta"], "readwrite");
+		const doneWriting = done(write);
+		const streams = write.objectStore("streams");
+		let seed = 0x2f6e2b1;
+		const rnd = (): number => {
+			seed ^= seed << 13;
+			seed ^= seed >>> 17;
+			seed ^= seed << 5;
+			return ((seed >>> 0) % 1_000_000) / 1_000_000;
+		};
+		for (let i = 0; i < count; i++) {
+			const music = rnd() < 0.62;
+			const artist = `Artist ${Math.floor(rnd() ** 2.4 * 400)}`;
+			const track = `Track ${Math.floor(rnd() * 3000)}`;
+			streams.put({
+				id: `seed-${i}`,
+				ts: START + Math.floor(rnd() * SPAN),
+				kind: music ? "music" : "youtube",
+				videoId: `v${i}`,
+				title: music ? `${artist} - ${track}` : `${track} clip`,
+				rawTitle: `Vous avez regardé ${track}`,
+				artist: music ? artist : null,
+				artistKey: music ? artist.toLowerCase() : "",
+				artistConfidence: music ? "topic" : "unknown",
+				channel: music ? `${artist} - Topic` : `Channel ${i % 800}`,
+				channelId: `c${i % 800}`,
+				adDriven: false,
+			});
+		}
+		// Meta drives the resolved range, the year buttons and the "has data"
+		// check, so the page never has to widen the range itself.
+		write.objectStore("meta").put({
+			key: "dataset",
+			schemaVersion: 1,
+			importedAt: Date.now(),
+			fileCount: 1,
+			rowCount: count,
+			musicCount: Math.round(count * 0.62),
+			youtubeCount: Math.round(count * 0.38),
+			unattributedMusic: 0,
+			duplicateCount: 0,
+			droppedCount: 0,
+			prefixesSeen: ["Vous avez regardé "],
+			minTs: START,
+			maxTs: START + SPAN,
+		});
+		await doneWriting;
+		db.close();
+	}, rows);
+
+	await page.reload();
+}
+
+/**
+ * Every `role=status` string the page painted while `action` ran.
+ *
+ * Sampled on animation frames, not with a MutationObserver. An observer's
+ * callback is delivered at a microtask checkpoint, and the skeleton commit, the
+ * worker's answer and the content commit can all land inside one of those - so
+ * an observer reports only the final state and the test silently proves
+ * nothing. Frame sampling sees each painted state, which is what "the user saw
+ * a loading indicator" actually means.
+ */
+async function recordStatuses(
+	page: Page,
+	action: () => Promise<void>,
+	settleMs = 2_000,
+): Promise<string[]> {
+	await page.evaluate(() => {
+		const w = window as unknown as {
+			__statuses: string[];
+			__sampling: boolean;
+		};
+		w.__statuses = [];
+		w.__sampling = true;
+		const scan = (): void => {
+			for (const el of document.querySelectorAll('[role="status"]')) {
+				const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+				if (text && !w.__statuses.includes(text)) w.__statuses.push(text);
+			}
+		};
+		const frame = (): void => {
+			scan();
+			if (w.__sampling) requestAnimationFrame(frame);
+		};
+		requestAnimationFrame(frame);
+	});
+	await action();
+	await page.waitForTimeout(settleMs);
+	return page.evaluate(() => {
+		const w = window as unknown as {
+			__statuses: string[];
+			__sampling: boolean;
+		};
+		w.__sampling = false;
+		return w.__statuses;
+	});
+}
+
+/**
+ * A page shows a loading state while the worker is busy, then its numbers.
+ * Pinned because the loading states are easy to delete as "unnecessary" - the
+ * whole point of moving the work off-thread is that the wait is VISIBLE instead
+ * of the tab being frozen with no explanation.
+ */
+test("a page shows its loading state, then its numbers", async ({ page }) => {
+	test.setTimeout(180_000);
+	await seedDataset(page, 120_000);
+
+	await page.getByRole("link", { name: "Videos", exact: true }).click();
+	await expect(page.getByRole("heading", { name: "Top channels" })).toBeVisible(
+		{ timeout: 90_000 },
+	);
+
+	// Start from a warm page, so the recorded navigation is a genuine cache miss.
+	const statuses = await recordStatuses(page, async () => {
+		await page.getByRole("link", { name: "Music", exact: true }).click();
+		await expect(
+			page.getByRole("heading", { name: "Favorite artists" }),
+		).toBeVisible({ timeout: 90_000 });
+	});
+	// The skeleton is announced as a status, not an alert: nothing failed, and a
+	// screen reader is told the page is working rather than left in silence.
+	expect(statuses.some((s) => /Crunching/.test(s))).toBe(true);
+});
+
+/**
+ * Changing the time filter must not blank the page: the previous numbers stay
+ * on screen while the new range is computed, behind a quiet "updating" marker.
+ * Blanking to a spinner on every preset click is what makes a fast app feel slow.
+ *
+ * Runs against a seeded dataset because the property only exists when the
+ * recompute takes real time - and against the 9-row fixture the honest result is
+ * the opposite one: the numbers swap within a single frame and nothing is ever
+ * blank. Both are correct; only the slow case needs pinning.
+ *
+ * Asserted over every painted state rather than at two instants, so the
+ * guarantee is "never empty at any point", not "was empty when we looked".
+ */
+test("changing the time filter never blanks the page", async ({ page }) => {
+	test.setTimeout(180_000);
+	await seedDataset(page, 120_000);
+
+	await page.getByRole("link", { name: "Music", exact: true }).click();
+	await expect(
+		page.getByRole("region", { name: "Favorite artists" }),
+	).toBeVisible({ timeout: 90_000 });
+	await page.waitForTimeout(500);
+
+	const observed = await page.evaluate(async () => {
+		const squash = (text: string): string => text.replace(/\s+/g, " ").trim();
+		const card = document.querySelector(
+			'section[aria-label="Favorite artists"]',
+		);
+		const button = [...document.querySelectorAll("button")].find(
+			(b) => b.textContent?.trim() === "Last 7 days",
+		);
+		if (!card || !button) return null;
+		const cards: string[] = [];
+		const statuses: string[] = [];
+		let sampling = true;
+		const frame = (): void => {
+			cards.push(squash(card.textContent ?? ""));
+			for (const el of document.querySelectorAll('[role="status"]')) {
+				const text = squash(el.textContent ?? "");
+				if (text && !statuses.includes(text)) statuses.push(text);
+			}
+			if (sampling) requestAnimationFrame(frame);
+		};
+		requestAnimationFrame(frame);
+		button.click();
+		await new Promise((resolve) => setTimeout(resolve, 3_000));
+		sampling = false;
+		return { cards: [...new Set(cards)], statuses };
+	});
+
+	expect(observed).not.toBeNull();
+	const cards = observed?.cards ?? [];
+	const statuses = observed?.statuses ?? [];
+	// Never blank: at no painted moment did the card lose its content.
+	expect(cards.every((text) => text.length > 0)).toBe(true);
+	// The content really did change, so the assertion is not vacuous.
+	expect(cards.length).toBeGreaterThan(1);
+	// And the change was announced rather than left silent.
+	expect(statuses.some((s) => /Updating/.test(s))).toBe(true);
 });
 
 test("a playlist export in the same drop is routed to likes", async ({
