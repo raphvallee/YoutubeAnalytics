@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { ArtistOrigin, StreamRecord } from "@/db/types";
 import type { GeoHit } from "@/lib/geocode";
 import type { MbArtistHit } from "@/lib/mbArtist";
-import { originFromLookups, originTargets } from "./origins";
+import {
+	isOriginStale,
+	ORIGIN_TTL_MONTHS,
+	ORIGIN_TTL_MS,
+	originFromLookups,
+	originTargets,
+} from "./origins";
+
+/** Fixed clock for the TTL cases, so they never depend on the real date. */
+const NOW = Date.UTC(2026, 9, 4);
 
 function rec(overrides: Partial<StreamRecord>): StreamRecord {
 	return {
@@ -34,7 +43,7 @@ const origin = (artistKey: string): ArtistOrigin => ({
 	countryCode: null,
 	lat: 0,
 	lng: 0,
-	resolvedAt: 1,
+	resolvedAt: NOW - 1000,
 });
 
 describe("originTargets", () => {
@@ -57,9 +66,71 @@ describe("originTargets", () => {
 			rec({ artistKey: "a", artist: "A" }),
 			rec({ artistKey: "b", artist: "B" }),
 		];
-		expect(originTargets(records, [origin("a")])).toEqual([
+		expect(originTargets(records, [origin("a")], NOW)).toEqual([
 			{ artistKey: "b", artist: "B", plays: 1 },
 		]);
+	});
+
+	// The point of the cache: a reload (or a re-import) must not spend
+	// requests re-resolving artists whose answers cannot have changed.
+	describe("6-month TTL", () => {
+		const records = [rec({ artistKey: "a", artist: "A" })];
+
+		it("skips a row resolved just now", () => {
+			const fresh = { ...origin("a"), resolvedAt: NOW - 1000 };
+			expect(originTargets(records, [fresh], NOW)).toEqual([]);
+		});
+
+		it("skips a row resolved a day ago", () => {
+			const row = { ...origin("a"), resolvedAt: NOW - 24 * 60 * 60 * 1000 };
+			expect(originTargets(records, [row], NOW)).toEqual([]);
+		});
+
+		it("keeps a row just inside the window cached", () => {
+			const row = {
+				...origin("a"),
+				resolvedAt: NOW - ORIGIN_TTL_MS + 60_000,
+			};
+			expect(originTargets(records, [row], NOW)).toEqual([]);
+		});
+
+		it("retargets a row past six months", () => {
+			const stale = { ...origin("a"), resolvedAt: NOW - ORIGIN_TTL_MS };
+			expect(originTargets(records, [stale], NOW)).toEqual([
+				{ artistKey: "a", artist: "A", plays: 1 },
+			]);
+		});
+
+		it("retargets a long-stale row", () => {
+			const old = {
+				...origin("a"),
+				resolvedAt: NOW - 3 * ORIGIN_TTL_MS,
+			};
+			expect(originTargets(records, [old], NOW)).toHaveLength(1);
+		});
+
+		// A clock-skewed or restored-from-backup row would otherwise be
+		// refetched on every single load, forever.
+		it("treats a future timestamp as fresh, not permanently stale", () => {
+			const future = { ...origin("a"), resolvedAt: NOW + 60_000 };
+			expect(originTargets(records, [future], NOW)).toEqual([]);
+		});
+
+		it("retargets only the stale rows, not the fresh ones", () => {
+			const many = [
+				rec({ artistKey: "a", artist: "A" }),
+				rec({ artistKey: "b", artist: "B" }),
+				rec({ artistKey: "c", artist: "C" }),
+			];
+			const cache = [
+				{ ...origin("a"), resolvedAt: NOW - 1000 },
+				{ ...origin("b"), resolvedAt: NOW - ORIGIN_TTL_MS - 1 },
+				{ ...origin("c"), resolvedAt: NOW - ORIGIN_TTL_MS / 2 },
+			];
+			expect(originTargets(many, cache, NOW)).toEqual([
+				{ artistKey: "b", artist: "B", plays: 1 },
+			]);
+		});
 	});
 
 	// A second import replaces the dataset and bumps lifetime plays. The run
@@ -80,16 +151,39 @@ describe("originTargets", () => {
 			rec({ id: "n5", artistKey: "c", artist: "C", ts: 500 }),
 		];
 		// Cache holds what pass 1 already resolved.
-		expect(originTargets(secondPass, [origin("a"), origin("b")])).toEqual([
+		expect(originTargets(secondPass, [origin("a"), origin("b")], NOW)).toEqual([
 			{ artistKey: "c", artist: "C", plays: 1 },
 		]);
 		// With nothing cached, the re-ranked full order is b (3) then a/c (1).
-		expect(originTargets(secondPass, [])).toEqual([
+		expect(originTargets(secondPass, [], NOW)).toEqual([
 			{ artistKey: "b", artist: "B", plays: 3 },
 			{ artistKey: "a", artist: "A", plays: 1 },
 			{ artistKey: "c", artist: "C", plays: 1 },
 		]);
-		expect(originTargets(firstPass, [])).toHaveLength(2);
+		expect(originTargets(firstPass, [], NOW)).toHaveLength(2);
+	});
+});
+
+describe("isOriginStale / ORIGIN_TTL_MS", () => {
+	it("is six months", () => {
+		expect(ORIGIN_TTL_MONTHS).toBe(6);
+		// ~182.6 days: a calendar month averaged over a year, not 30 days.
+		expect(ORIGIN_TTL_MS / (24 * 60 * 60 * 1000)).toBeCloseTo(182.625, 2);
+	});
+
+	it("is false just inside the window and true at the boundary", () => {
+		expect(isOriginStale({ ...origin("a"), resolvedAt: NOW - 1 }, NOW)).toBe(
+			false,
+		);
+		expect(
+			isOriginStale({ ...origin("a"), resolvedAt: NOW - ORIGIN_TTL_MS }, NOW),
+		).toBe(true);
+	});
+
+	it("is false for a future timestamp", () => {
+		expect(isOriginStale({ ...origin("a"), resolvedAt: NOW + 1 }, NOW)).toBe(
+			false,
+		);
 	});
 });
 

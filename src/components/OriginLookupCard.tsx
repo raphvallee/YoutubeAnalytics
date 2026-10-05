@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/format";
 import { useDatasetStore } from "@/state/dataset";
 import {
 	clearOriginsCache,
 	isOriginLookupOn,
+	ORIGIN_TTL_MONTHS,
 	setOriginLookupOn,
 	useOriginsStore,
 } from "@/state/origins";
@@ -40,6 +42,10 @@ export function OriginLookupCard() {
 	}, [status, reloadData]);
 
 	const placed = cache.filter((c) => c.precision !== "miss").length;
+	// Newest resolvedAt across the cache, so the card can say how fresh the
+	// data is. Rows older than the TTL get refetched automatically on the next
+	// run, so this ages visibly rather than being a hidden expiry.
+	const latest = cache.reduce((max, c) => Math.max(max, c.resolvedAt), 0);
 
 	return (
 		<div className="rounded-lg border p-4">
@@ -80,6 +86,12 @@ export function OriginLookupCard() {
 					{running
 						? `${progress.done}/${progress.total} artists…`
 						: `${placed.toLocaleString()} of ${cache.length.toLocaleString()} artist${cache.length === 1 ? "" : "s"} placed${cache.length > 0 ? " · rest not found" : ""}.`}
+					{!running && latest > 0 && (
+						<span className="text-xs text-muted-foreground">
+							Last updated {formatDateTime(latest)} · refreshed automatically
+							after {ORIGIN_TTL_MONTHS} months
+						</span>
+					)}
 				</span>
 				{cache.length > 0 && !running && (
 					<Button

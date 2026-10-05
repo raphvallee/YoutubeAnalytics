@@ -31,6 +31,31 @@ export function setOriginLookupOn(on: boolean): void {
 	else localStorage.setItem(OPTIN_KEY, "0");
 }
 
+/**
+ * How long a resolved origin is trusted before it is looked up again.
+ *
+ * MusicBrainz data is not frozen: artists get a begin_area filled in, names
+ * get corrected, an ambiguous match gets superseded. So a cached row is
+ * refreshed eventually rather than kept forever - but the window has to be
+ * wide enough that ordinary use (reload, re-import, revisit) never spends a
+ * request, which is what makes the cache worth having at all.
+ *
+ * Six months is a compromise: long enough that a normal return visit hits
+ * the cache, short enough that a year-old miss gets another chance.
+ */
+export const ORIGIN_TTL_MONTHS = 6;
+const AVG_MONTH_MS = (365.25 / 12) * 24 * 60 * 60 * 1000;
+export const ORIGIN_TTL_MS = Math.round(ORIGIN_TTL_MONTHS * AVG_MONTH_MS);
+
+/**
+ * Is this cached row due for a refetch? A row from the future (clock skew,
+ * a restore from a backup) counts as fresh rather than being refetched on
+ * every load forever.
+ */
+export function isOriginStale(row: ArtistOrigin, now: number): boolean {
+	return now - row.resolvedAt >= ORIGIN_TTL_MS;
+}
+
 export interface OriginTarget {
 	artistKey: string;
 	artist: string;
@@ -39,13 +64,21 @@ export interface OriginTarget {
 
 /**
  * Every attributed music artist over ALL records (the map is all-time by
- * definition), ranked by plays desc, minus already-cached artistKeys.
+ * definition), ranked by plays desc, minus the artistKeys already cached.
+ *
+ * `now` is injected rather than read from the clock so the staleness cutoff
+ * is testable. A cached row still inside the TTL is skipped; an older one is
+ * returned as a target again, so it gets refetched while remaining on the map
+ * (the caller overwrites in place, no blanking).
  */
 export function originTargets(
 	records: StreamRecord[],
 	cache: ArtistOrigin[],
+	now: number = Date.now(),
 ): OriginTarget[] {
-	const cached = new Set(cache.map((c) => c.artistKey));
+	const cached = new Set(
+		cache.filter((c) => !isOriginStale(c, now)).map((c) => c.artistKey),
+	);
 	const counts = new Map<string, OriginTarget>();
 	for (const r of records) {
 		if (r.kind !== "music" || !r.artistKey) continue;
@@ -211,7 +244,6 @@ async function runLookups(
 		error: null,
 		progress: { done, total: queue.length },
 	});
-	const pending: ArtistOrigin[] = [];
 	try {
 		while (true) {
 			if (i >= queue.length) {
@@ -248,23 +280,27 @@ async function runLookups(
 			}
 			const centroid = geo ? null : countryCentroid(mb?.country);
 
-			pending.push({
+			const row: ArtistOrigin = {
 				artistKey: target.artistKey,
 				artistName: target.artist,
 				resolvedAt: Date.now(),
 				...originFromLookups(mb, geo, centroid),
-			});
+			};
 			done += 1;
 			// `total` counts known work outstanding, so it grows when an
 			// import adds artists mid-run instead of leaving done > total.
 			set({ progress: { done, total: done + queue.length - i } });
-			// Persist in small batches and grow the cache live so the map
-			// fills in while a long run is still going.
-			if (pending.length >= 5) {
-				const batch = pending.splice(0, pending.length);
-				await putArtistOrigins(batch);
-				set({ cache: [...get().cache, ...batch] });
-			}
+			// Persist every row as soon as it resolves, and grow the cache in
+			// the same step, so the map fills in while a long run is going.
+			//
+			// One write per artist, not a batch: a run is paced at 1 req/s, so
+			// the write is free next to the request it follows. Buffering was
+			// what made a reload throw work away - a reload unmounts the page
+			// without running `finally`, so every row still sitting in the
+			// buffer was lost and re-queried from scratch on the next load,
+			// which is exactly the restart this is meant to avoid.
+			await putArtistOrigins([row]);
+			set({ cache: upsertOrigin(get().cache, row) });
 		}
 	} catch (err) {
 		// HTTP/network errors write no row: only clean empty responses are
@@ -276,13 +312,30 @@ async function runLookups(
 			});
 		}
 	} finally {
-		if (pending.length > 0) {
-			await putArtistOrigins(pending);
-			set({ cache: [...get().cache, ...pending] });
-		}
+		// Nothing to flush: every row is already durable (see the write in
+		// the loop), so an abort at any point keeps the work done so far.
 		set({ running: false });
 		activeController = null;
 	}
+}
+
+/**
+ * Replace the cache entry for one artistKey, or append it if absent.
+ *
+ * A TTL refresh re-resolves an artist that is *already* in the cache, so a
+ * blind append would leave two rows under one key: the map would double-count
+ * that artist's plays and the table would list them twice. Dexie's bulkPut
+ * overwrites by primary key; this keeps the in-memory mirror honest.
+ */
+function upsertOrigin(
+	cache: ArtistOrigin[],
+	row: ArtistOrigin,
+): ArtistOrigin[] {
+	const i = cache.findIndex((c) => c.artistKey === row.artistKey);
+	if (i === -1) return [...cache, row];
+	const next = [...cache];
+	next[i] = row;
+	return next;
 }
 
 export async function clearOriginsCache(): Promise<void> {
