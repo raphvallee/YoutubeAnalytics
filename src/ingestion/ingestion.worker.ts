@@ -37,7 +37,8 @@ export type IngestResponse =
 	| {
 			type: "progress";
 			phase: IngestPhase;
-			fileIndex: number;
+			/** 0-based, or null when the phase is not about a single file. */
+			fileIndex: number | null;
 			fileCount: number;
 			rows?: number;
 	  }
@@ -201,11 +202,15 @@ self.onmessage = async (event: MessageEvent<IngestRequest>) => {
 		// zone: "3 files imported" must not include the search history we skipped.
 		const usedCount = verdicts.filter((v) => v.role !== "unknown").length;
 
+		// No file is in flight any more - the whole batch is written as one
+		// transaction - so the index is null rather than one past the last file,
+		// and `rows` carries the only number that means anything here.
 		post({
 			type: "progress",
 			phase: "persist",
-			fileIndex: files.length,
+			fileIndex: null,
 			fileCount: files.length,
+			rows: allRecords.length,
 		});
 		const summary = await commitDataset(allRecords, usedCount, ingestStats, {
 			...options,
