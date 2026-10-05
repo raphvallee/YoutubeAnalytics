@@ -5,6 +5,11 @@
 
 import type { StreamRecord } from "@/db/types";
 import { type Bucket, bucketKey, buildBucketSpans } from "./buckets";
+import {
+	channelKeyOf,
+	channelNameOf,
+	isChannelRow,
+} from "./channelAttribution";
 import { inRange, type QueryOptions, type Range } from "./queries";
 
 export interface ChannelAgg {
@@ -18,6 +23,13 @@ export interface ChannelAgg {
 /**
  * Top channels, grouped by channelId when present, else by display name.
  * Includes ad-driven rows? No - organic default matches music queries.
+ *
+ * Rows that cannot be credited to a real channel are skipped rather than
+ * ranked: no subtitles at all (previously the `(unknown channel)` bucket) and
+ * Takeout system rows whose first subtitle is a platform string, not a
+ * channel. See `channelAttribution.ts`. `youtubeSummary().unattributed`
+ * reports how many rows that is, so the leaderboard never has to invent a
+ * channel name to hold them.
  */
 export function topChannels(
 	records: StreamRecord[],
@@ -28,11 +40,12 @@ export function topChannels(
 	const counts = new Map<string, ChannelAgg>();
 	for (const r of records) {
 		if (r.kind !== "youtube" || !inRange(r, range, opts)) continue;
-		const key = r.channelId ?? r.channel ?? "(unknown channel)";
+		if (!isChannelRow(r)) continue;
+		const key = channelKeyOf(r);
 		let agg = counts.get(key);
 		if (!agg) {
 			agg = {
-				channel: r.channel ?? "(unknown channel)",
+				channel: channelNameOf(r),
 				channelId: r.channelId,
 				plays: 0,
 				firstWatch: null,
@@ -129,8 +142,20 @@ export function youtubeTrend(
 }
 
 export interface YoutubeSummary {
+	/**
+	 * Organic youtube rows in range - the same population the trend line and
+	 * the hour/weekday histograms count, so the stat tile keeps matching them.
+	 */
 	totalPlays: number;
+	/** Distinct real channels in range. Excludes unattributable rows. */
 	uniqueChannels: number;
+	/**
+	 * Rows in `totalPlays` that no real channel can be credited for (missing
+	 * subtitles, Takeout system rows). Surfaced so the channel leaderboard can
+	 * state that it ranks fewer rows than the stat tile, instead of leaving the
+	 * user to reconcile two numbers that should match.
+	 */
+	unattributed: number;
 }
 
 export function youtubeSummary(
@@ -139,11 +164,20 @@ export function youtubeSummary(
 	opts: QueryOptions = {},
 ): YoutubeSummary {
 	let totalPlays = 0;
+	let unattributed = 0;
 	const channels = new Set<string>();
 	for (const r of records) {
 		if (r.kind !== "youtube" || !inRange(r, range, opts)) continue;
 		totalPlays += 1;
-		channels.add(r.channelId ?? r.channel ?? "(unknown channel)");
+		if (!isChannelRow(r)) {
+			unattributed += 1;
+			continue;
+		}
+		channels.add(channelKeyOf(r));
 	}
-	return { totalPlays, uniqueChannels: channels.size };
+	return {
+		totalPlays,
+		uniqueChannels: channels.size,
+		unattributed,
+	};
 }
