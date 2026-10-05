@@ -129,6 +129,30 @@ export function topTracks(
 		.slice(0, limit);
 }
 
+/**
+ * Lifetime (all-time, organic) plays per artistKey over attributed music rows.
+ *
+ * The one pass behind `topArtists` and behind the World Map's play weighting,
+ * kept separate because both need the FULL ranking rather than a truncated one:
+ * a leaderboard only shows the top 25, while the map must weigh every artist
+ * that has a resolved origin.
+ */
+export function artistPlayTotals(
+	records: StreamRecord[],
+): Map<string, { artist: string; plays: number }> {
+	const totals = new Map<string, { artist: string; plays: number }>();
+	for (const r of records) {
+		if (r.kind !== "music" || !r.artistKey || r.adDriven) continue;
+		let entry = totals.get(r.artistKey);
+		if (!entry) {
+			entry = { artist: r.artist ?? r.artistKey, plays: 0 };
+			totals.set(r.artistKey, entry);
+		}
+		entry.plays += 1;
+	}
+	return totals;
+}
+
 export interface SeriesPoint {
 	key: string;
 	start: number;

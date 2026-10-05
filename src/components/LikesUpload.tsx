@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { invalidateAnalytics } from "@/analytics/analyticsClient";
 import { Button } from "@/components/ui/button";
 import { clearLikes, replaceLikes } from "@/db/db";
 import { parseLikesFile } from "@/ingestion/likesParse";
@@ -36,6 +37,9 @@ export function LikesUpload() {
 			} catch (err) {
 				setError(err instanceof Error ? err.message : String(err));
 			} finally {
+				// This component owns the write, so this is where the analytics
+				// worker's copy of the likes rows is declared stale.
+				invalidateAnalytics();
 				reload();
 			}
 		},
@@ -44,6 +48,7 @@ export function LikesUpload() {
 
 	const onClear = useCallback(async () => {
 		await clearLikes();
+		invalidateAnalytics();
 		reload();
 	}, [reload]);
 

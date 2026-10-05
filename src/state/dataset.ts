@@ -1,7 +1,7 @@
 import { create } from "zustand";
+import { invalidateAnalytics } from "@/analytics/analyticsClient";
 import { getDatasetMeta, loadAllStreams } from "@/db/db";
 import type { DatasetMeta, StreamRecord } from "@/db/types";
-import { resetTrackKeyMemo } from "@/ingestion/titleParse";
 import { resetSeriesColors } from "@/lib/palette";
 
 interface DatasetState {
@@ -15,8 +15,15 @@ interface DatasetState {
 let loadSeq = 0;
 
 /**
- * Whole-dataset in-memory store (BLUEPRINT §1.2): one IndexedDB read on
- * start/refresh; aggregations run over `records` with useMemo downstream.
+ * Dataset store (BLUEPRINT §1.2): one IndexedDB read on start/refresh, kept in
+ * memory because the World Map's origins ranking and the Import page's snapshot
+ * buttons need the rows themselves.
+ *
+ * What changed in Phase 9: the aggregation passes do NOT run over `records`
+ * here any more - they run in the analytics worker, which reads the same tables
+ * itself. So a page mount no longer costs a 200ms render, and `reload()` only
+ * has to tell the worker to re-read rather than re-serialize 120k rows across a
+ * worker boundary.
  */
 export const useDatasetStore = create<DatasetState>((set) => ({
 	status: "idle",
@@ -29,10 +36,9 @@ export const useDatasetStore = create<DatasetState>((set) => ({
 			([records, meta]) => {
 				if (seq !== loadSeq) return; // a newer reload superseded this one
 				resetSeriesColors(); // colors follow entities; new dataset invalidates registry
-				// Memoized track keys are keyed by title, so entries for titles this
-				// dataset no longer holds are dead weight rather than wrong. Drop
-				// them anyway so a long-lived tab does not accumulate them.
-				resetTrackKeyMemo();
+				// The analytics worker caches its own copy and its own track-key
+				// memo; this is the signal that both are now stale.
+				invalidateAnalytics();
 				set({ status: "ready", records, meta });
 			},
 		);

@@ -319,7 +319,9 @@ One aggregation service consumes `(from, to)`; presets are only range-builders. 
 
 ### 3.8 Performance envelope
 
-56k rows: every query above is a single O(n) pass or `Map`-grouped pass - < 5ms. At the 100MB ceiling (~250k rows): still < 30ms per interaction, `useMemo` with filter-key deps prevents recomputation on unrelated re-renders. No web worker needed for queries; only ingestion.
+56k rows: every query above is a single O(n) pass or `Map`-grouped pass. At the 100MB ceiling (~250k rows) a full page mount is **nine-to-fourteen of those passes back to back, inside one React render** - measured at 120k rows: Music ~205ms, Video ~105ms of straight-line main-thread work. Per-query cost stayed inside the old budget; the page-level sum did not, and `useMemo` with filter-key deps cannot help with work that has to finish before the first paint.
+
+**Superseded by Phase 9:** aggregations run in the analytics worker, not on the main thread. See §5 Phase 9 - the dataset lives in the worker (read from IndexedDB there, never structured-cloned across the boundary), pages ask for one render-ready bundle per range, and the main thread is left to paint.
 
 ---
 
@@ -475,18 +477,46 @@ The pain that prompted it: exports taken months apart all contain a file named `
 - [x] **Honest progress numbers.** *Per user report, the dropzone counter read one file too many for the whole write ("file 2/1"). Cause: the worker posts a 0-based `fileIndex` for the read and normalize phases, but sent `files.length` for the persist phase, and the view rendered `fileIndex + 1` unconditionally - so the longest phase (the 5k-chunk `bulkPut` loop) showed `N+1 of N`. Fixed at the contract rather than by clamping the arithmetic: `IngestProgress.fileIndex` is now `number | null`, persist sends `null` (no file is in flight, the batch is written as one transaction) plus `rows: allRecords.length`, and `src/ingestion/progressText.ts` owns the copy - a file position only when a file is genuinely being handled, and a row count otherwise ("N streams from this file" while parsing, "N streams to write" while persisting)*
 - [x] Coverage. *(`detect.test.ts` 47 cases: classification incl. BOM/HTML/nested-array/escaped-quote edges, signature stability + collision resistance, and label numbering incl. multi-dot/extensionless/dotfile names; 6 `db.test.ts` cases for add-mode merge, last-writer-wins, aggregate recompute, counter accumulation and likes upsert; 6 `progressText.test.ts` cases pinning 1-based positions, the single-file batch, the null-index persist phase and an invariant that no position ever exceeds the batch size; 10 Playwright specs covering same-named numbering, identical-byte collapsing, multi-drop accumulation, row removal, mixed-folder drop, playlist routing, add-vs-replace and the pre-import snapshot. Gate: 193/193 unit, 10/10 e2e, tsc -b and vite build clean)*
 
+### Phase 9 - Instant navigation (implemented 2026-10-05, requested directly by the user)
+
+The report: every action should be instant, and navigation in particular - it should change automatically and show loading rather than block the thread.
+
+What was actually wrong. Per-query costs were fine; the page-level sum was not, and it all ran inside a React render. Measured at 120k rows on the previous commit, `MusicView`'s mount memo set was ~205ms and `VideoView`'s ~105ms of straight-line main-thread work. Clicking a sidebar link therefore froze the tab for the length of a whole page mount with no feedback at all - the click registered, then nothing, then a page appeared. Two more costs sat behind it: `structuredClone` of the dataset for a worker hand-off measured ~152ms, and selecting a snapshot deserialized a second full copy of the rows onto the UI thread.
+
+- [x] **The dataset lives in the analytics worker.** *(`src/analytics/analytics.worker.ts`.) IndexedDB is available in workers - the ingestion worker already relied on that - so the worker reads `streams`, `likes` and the active snapshot itself and the 120k-row array never crosses a boundary at all. That is strictly better than handing it over: `structuredClone` alone cost ~152ms. The worker is long-lived and reloads only when told the tables changed; the track-key memo is dropped with the reload, since it is keyed by title and the new dataset's titles are a subset*
+- [x] **One request per page, not one per chart.** *(`src/analytics/dashboard.ts` + `protocol.ts`.) `musicDashboard` / `videoDashboard` / `artistDashboard` / `compare` / `likesDashboard` / `originPlays` each answer "what does this page render for this range?" in a single call, replacing the 9-14 independent `useMemo` passes per page. Requests carry data (a range, an artistKey, a leaderboard to join against) rather than callbacks, because the worker boundary is a structured clone. `likesDashboard` and `originPlays` are separate requests on purpose: likes change on their own uploads and the map is all-time, so neither should invalidate the leaderboard*
+- [x] **The UI keeps its numbers while they change.** *(`src/state/useAnalytics.ts`.) First render shows a skeleton, but a *later* input - a time filter, a range change - keeps the previous answer on screen and flips `refreshing`. Blanking a dashboard to a spinner on every year click feels slower than the 200ms it replaces. A dataset change is the exception and does drop stale data, because those numbers described rows that no longer exist. Late answers for superseded requests are discarded by token, and unmounts do not leak*
+- [x] **Result cache keyed by request + generation.** *(`src/analytics/analyticsClient.ts`.) Navigating Music → Video → Music answers the second Music visit from memory: no request, no skeleton, no wait. Bounded at 24 entries, since clicking through the year buttons would otherwise pin one result per range ever visited. In-flight requests are de-duplicated by key, which is what lets the hook depend on the request object without a "have I already asked" guard - such a guard is fatal under StrictMode, where the simulated unmount disarms the listener and the re-mount declines to re-ask, leaving the page on its skeleton forever (found live, not reasoned about). Every response carries the generation it was computed against, so a result built from rows the UI has already replaced can never be adopted*
+- [x] **Invalidation owned by the writer.** *The dataset store bumps the generation after a reload; `LikesUpload` does it after a write. Deliberately NOT in `useLikesStore.reload`, which every Music-page mount calls to pick up an upload made elsewhere - an unconditional invalidation there would throw away the whole cache on every navigation, which is exactly what makes navigation instant*
+- [x] **Visible progress.** *(`PageSkeleton` + the thin bar in `App.tsx`.) The skeleton is `role="status"`, not an alert: nothing failed, and a screen reader is told the page is working rather than left in silence. `AnalyticsProgress` covers the smaller range changes that deliberately keep the old content. Both state "updating", never "wait, error"*
+- [x] **Snapshots no longer deserialize onto the UI thread.** *(`snapshots.ts`.) Selecting a compare snapshot used to load its full record array onto the main thread; the worker loads the rows itself now, so the store only records WHICH snapshot is selected and `select()` became synchronous - which also removed the `loading` state the picker used to disable itself with. `HeatmapCalendar` likewise takes a built `Calendar` instead of `records`*
+- [x] **Coverage.** *(`dashboard.test.ts` 11 cases pinning each bundle against the individual query functions it replaced, so an accidental change to an aggregate fails loudly rather than drifting with it. 3 Playwright specs, two of which seed 120k rows directly into IndexedDB: no long task (>50ms) across six page navigations; the loading status is painted; and the filter change is asserted frame-by-frame to never blank the card. The two timing tests need a seeded dataset - against the 9-row fixture every aggregation finishes within a millisecond and the loading states are genuinely never painted, so asserting on them would be a race. Gate: 229/229 unit, 13/13 e2e, biome + tsc -b + vite build clean)*
+
+Measured, same machine, 120k rows, `vite preview` build, comparing this commit against its parent (a worktree of `HEAD` at `2661a54`), long tasks observed on the main thread during navigation:
+
+| | before | after |
+| --- | --- | --- |
+| Music, first visit | 792ms | 143ms |
+| Video, first visit | 595ms | 83ms |
+| Music, repeat visit | 830ms | 68ms |
+| Longest main-thread block | 573ms | 249ms |
+
+The remaining ~100-250ms blocks are Recharts rendering and the chart data entering the DOM - rendering cost, not aggregation - and they are now the only thing between a click and the page appearing.
+
 ---
 
 ## 6. Repository Layout (target)
 
 ```
 src/
-  analytics/        # pure aggregation fns + time bucketing
-  components/       # shadcn wrappers, ChartCard, toolbar
+  analytics/        # pure aggregation fns, time bucketing, page bundles,
+                    # analytics worker + protocol + main-thread client
+  components/       # shadcn wrappers, ChartCard, toolbar, PageSkeleton
   db/               # dexie schema, persistence helpers
   ingestion/        # worker, normalize.ts, prefixes.ts, titleParse.ts
-  pages/            # ImportView, MusicView, VideoView
-  state/            # zustand stores (filters, dataset meta)
+  pages/            # ImportView, MusicView, VideoView, MapWorldView
+  state/            # zustand stores (filters, dataset, likes, snapshots)
+                    # + useAnalytics (the one hook pages get numbers through)
   test/fixtures/    # sliced real-file fixtures (committed)
 ```
 

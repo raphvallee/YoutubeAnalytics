@@ -1,29 +1,27 @@
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { autoBucket } from "@/analytics/buckets";
-import { availableYears } from "@/analytics/queries";
-import {
-	hourWeekdayHistogram,
-	topChannels,
-	youtubeSummary,
-	youtubeTrend,
-} from "@/analytics/youtube";
+import type { RequestFor } from "@/analytics/protocol";
 import { ChannelLeaderboard } from "@/components/ChannelLeaderboard";
 import { ChartCard } from "@/components/ChartCard";
 import { BarsChart } from "@/components/charts/BarsChart";
 import { HeatmapCalendar } from "@/components/charts/HeatmapCalendar";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { LoadingDataset } from "@/components/LoadingDataset";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { SERIES_COLORS } from "@/lib/palette";
 import { useDatasetStore } from "@/state/dataset";
 import { resolveRange, useFilterStore } from "@/state/filters";
+import { useAnalytics } from "@/state/useAnalytics";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const ACCENT = SERIES_COLORS[1] ?? "#d95926";
 
 export default function VideoView() {
-	const { status, records, meta, reload } = useDatasetStore();
+	const status = useDatasetStore((s) => s.status);
+	const meta = useDatasetStore((s) => s.meta);
+	const reload = useDatasetStore((s) => s.reload);
 	const filterState = useFilterStore();
 
 	useEffect(() => {
@@ -39,51 +37,44 @@ export default function VideoView() {
 	// in MusicView. Do NOT narrow the deps of the memo above: `resolveRange` calls
 	// `Date.now()`, so keying it on from/to would freeze the relative presets.
 	const { from, to } = range;
-
-	const years = useMemo(() => availableYears(records), [records]);
-	const summary = useMemo(
-		() => youtubeSummary(records, { from, to }),
-		[records, from, to],
-	);
-	const channels = useMemo(
-		() => topChannels(records, { from, to }, {}, 25),
-		[records, from, to],
-	);
-	// One pass, one `Date` per row, for both histograms. They apply the same
-	// predicate, so a single scan produces both.
-	const histograms = useMemo(
-		() => hourWeekdayHistogram(records, { from, to }),
-		[records, from, to],
-	);
 	const trendBucket = autoBucket(from, to);
-	const trend = useMemo(
-		() => youtubeTrend(records, { from, to }, trendBucket),
-		[records, from, to, trendBucket],
-	);
 
+	const ready = status === "ready" && meta !== null;
+	const request = useMemo<RequestFor<"videoDashboard"> | null>(
+		() =>
+			ready
+				? { name: "videoDashboard", range: { from, to }, bucket: trendBucket }
+				: null,
+		[ready, from, to, trendBucket],
+	);
+	const dashboard = useAnalytics(request);
+
+	// Presentation-only derivations of the histograms. They read 24 and 7 numbers
+	// respectively, so they belong on this thread rather than in the request.
 	const hourData = useMemo(() => {
-		const hours = histograms.hours;
+		const hours = dashboard.data?.hours;
+		if (!hours) return [];
 		const peak = hours.indexOf(Math.max(...hours));
 		return hours.map((value, h) => ({
 			label: String(h).padStart(2, "0"),
 			value,
 			color: value > 0 && h === peak ? ACCENT : undefined,
 		}));
-	}, [histograms]);
+	}, [dashboard.data]);
 
 	const weekdayData = useMemo(
 		() =>
 			WEEKDAYS.map((label, i) => ({
 				label,
-				value: histograms.weekdays[i] ?? 0,
+				value: dashboard.data?.weekdays[i] ?? 0,
 			})),
-		[histograms],
+		[dashboard.data],
 	);
 
 	if (status !== "ready") {
 		return <LoadingDataset />;
 	}
-	if (!meta || records.length === 0) {
+	if (!meta || meta.rowCount === 0) {
 		return (
 			<div className="p-6">
 				<p className="text-sm text-muted-foreground">
@@ -96,19 +87,29 @@ export default function VideoView() {
 			</div>
 		);
 	}
+	if (dashboard.pending) return <PageSkeleton />;
+
+	const data = dashboard.data;
+	if (!data) return <PageSkeleton label="Could not load this page" />;
 
 	return (
 		<div className="space-y-6">
-			<TimeFilterToolbar years={years} />
+			<TimeFilterToolbar years={data.years} />
+
+			{dashboard.error && (
+				<p role="alert" className="text-sm text-destructive">
+					Could not update these numbers: {dashboard.error}
+				</p>
+			)}
 
 			<section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
 				<Stat
 					label="Videos watched"
-					value={summary.totalPlays.toLocaleString()}
+					value={data.summary.totalPlays.toLocaleString()}
 				/>
 				<Stat
 					label="Channels"
-					value={summary.uniqueChannels.toLocaleString()}
+					value={data.summary.uniqueChannels.toLocaleString()}
 				/>
 				<Stat label="Range" value={label} />
 			</section>
@@ -117,7 +118,7 @@ export default function VideoView() {
 				title="Top channels"
 				subtitle={<RangeLabel dataMin={meta.minTs} dataMax={meta.maxTs} />}
 			>
-				<ChannelLeaderboard channels={channels} />
+				<ChannelLeaderboard channels={data.channels} />
 			</ChartCard>
 
 			<ChartCard
@@ -127,7 +128,7 @@ export default function VideoView() {
 				}
 			>
 				<TrendLineChart
-					data={trend}
+					data={data.trend}
 					label={`Viewing trend line chart, views per ${trendBucket}`}
 				/>
 			</ChartCard>
@@ -137,7 +138,7 @@ export default function VideoView() {
 				subtitle="Streams per day across the whole dataset"
 				height={200}
 			>
-				<HeatmapCalendar records={records} />
+				<HeatmapCalendar calendar={data.calendar} />
 			</ChartCard>
 
 			<div className="grid gap-6 lg:grid-cols-2">

@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { memo, useMemo, useState } from "react";
-import { buildCalendar, type HeatCell } from "@/analytics/heatmap";
-import type { StreamRecord } from "@/db/types";
+import type { Calendar, HeatCell } from "@/analytics/heatmap";
 
 /**
  * Watch-time heatmap calendar (Phase 6): GitHub-style month columns, Mon-first.
@@ -28,12 +27,17 @@ const WEEKDAY_LABELS = [
 
 const PAD_KEYS = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
 
+/**
+ * Takes a pre-built {@link Calendar} rather than the raw records: since Phase 9
+ * the day-counting pass over 120k+ rows happens in the analytics worker, and
+ * shipping the rows to this component just to re-derive it would put the cost
+ * straight back on the thread that has to paint.
+ */
 export const HeatmapCalendar = memo(function HeatmapCalendar({
-	records,
+	calendar,
 }: {
-	records: StreamRecord[];
+	calendar: Calendar;
 }) {
-	const calendar = useMemo(() => buildCalendar(records), [records]);
 	const cellsByDay = useMemo(
 		() =>
 			new Map(calendar.months.flatMap((m) => m.days).map((c) => [c.day, c])),

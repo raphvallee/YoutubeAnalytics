@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import type { RequestFor } from "@/analytics/protocol";
 import { ChartCard } from "@/components/ChartCard";
 import {
 	type MapMode,
@@ -7,11 +8,13 @@ import {
 	WorldMap,
 } from "@/components/charts/WorldMap";
 import { LoadingDataset } from "@/components/LoadingDataset";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import type { ArtistOrigin } from "@/db/types";
 import { isoNumeric } from "@/lib/iso";
 import { SERIES_COLORS } from "@/lib/palette";
 import { useDatasetStore } from "@/state/dataset";
-import { originTargets, useOriginsStore } from "@/state/origins";
+import { useOriginsStore } from "@/state/origins";
+import { useAnalytics } from "@/state/useAnalytics";
 
 /**
  * World map of artist origins (Phase 7). All-time by definition - the
@@ -19,7 +22,9 @@ import { originTargets, useOriginsStore } from "@/state/origins";
  * on open while the Import-page toggle is on; results render live.
  */
 export default function MapWorldView() {
-	const { status, records, meta, reload } = useDatasetStore();
+	const status = useDatasetStore((s) => s.status);
+	const meta = useDatasetStore((s) => s.meta);
+	const reload = useDatasetStore((s) => s.reload);
 	const cache = useOriginsStore((s) => s.cache);
 	const reloadCache = useOriginsStore((s) => s.reload);
 	const running = useOriginsStore((s) => s.running);
@@ -36,13 +41,24 @@ export default function MapWorldView() {
 
 	// Lookups auto-start at app root (App.tsx); this page only renders.
 
-	const artistPlays = useMemo(() => {
-		const m = new Map<string, { artist: string; plays: number }>();
-		for (const t of originTargets(records, [])) m.set(t.artistKey, t);
-		return m;
-	}, [records]);
+	// Lifetime plays per artist: one full-dataset pass, so it belongs in the
+	// worker. No range - the map is all-time by design.
+	const playsRequest = useMemo<RequestFor<"originPlays"> | null>(
+		() =>
+			status === "ready" && meta !== null ? { name: "originPlays" } : null,
+		[status, meta],
+	);
+	const plays = useAnalytics(playsRequest);
+	// Null until the worker's first answer lands. The memos below still have to
+	// run (hooks are unconditional), so they read through it: an artist with no
+	// ranking yet counts as 0 plays - the same answer the empty origins table
+	// gives - and the page stays behind a skeleton until it resolves.
+	const artistPlays = plays.data;
 
 	const points = useMemo<MapPoint[]>(() => {
+		const rank = artistPlays;
+		const playsOf = (artistKey: string): number =>
+			rank?.get(artistKey)?.plays ?? 0;
 		// Stale cache rows (artist no longer in the imported dataset) have no
 		// plays - only artists actually listened to get displayed.
 		const resolved = cache.filter(
@@ -56,7 +72,7 @@ export default function MapWorldView() {
 				c.precision !== "miss" &&
 				c.lat !== null &&
 				c.lng !== null &&
-				(artistPlays.get(c.artistKey)?.plays ?? 0) >= 1,
+				playsOf(c.artistKey) >= 1,
 		);
 		const groups = new Map<string, MapPoint>();
 		for (const o of resolved) {
@@ -74,10 +90,10 @@ export default function MapWorldView() {
 				};
 				groups.set(key, g);
 			}
-			g.plays += artistPlays.get(o.artistKey)?.plays ?? 0;
+			g.plays += playsOf(o.artistKey);
 			g.artists.push({
 				name: o.artistName,
-				plays: artistPlays.get(o.artistKey)?.plays ?? 0,
+				plays: playsOf(o.artistKey),
 			});
 		}
 		return [...groups.values()]
@@ -95,7 +111,7 @@ export default function MapWorldView() {
 					.filter(
 						(c) =>
 							c.precision !== "miss" &&
-							(artistPlays.get(c.artistKey)?.plays ?? 0) >= 1,
+							(artistPlays?.get(c.artistKey)?.plays ?? 0) >= 1,
 					)
 					.map((c) => isoNumeric(c.countryCode))
 					.filter((n): n is string => n !== null),
@@ -106,7 +122,7 @@ export default function MapWorldView() {
 	if (status !== "ready") {
 		return <LoadingDataset />;
 	}
-	if (!meta || records.length === 0) {
+	if (!meta || meta.rowCount === 0) {
 		return (
 			<div className="p-6">
 				<p className="text-sm text-muted-foreground">
@@ -119,6 +135,10 @@ export default function MapWorldView() {
 			</div>
 		);
 	}
+	// The map's own SVG is cheap, but the ranking behind it is a full pass, so
+	// hold the page until that has landed rather than freezing to draw it.
+	if (artistPlays === null)
+		return <PageSkeleton label="Ranking your artists" />;
 
 	const placed = cache.filter((c) => c.precision !== "miss").length;
 

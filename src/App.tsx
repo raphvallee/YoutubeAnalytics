@@ -1,5 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Navigate, NavLink, Route, Routes } from "react-router";
+import {
+	pendingAnalytics,
+	subscribeAnalyticsPending,
+} from "@/analytics/analyticsClient";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ImportView from "@/pages/ImportView";
 import MapWorldView from "@/pages/MapWorldView";
@@ -30,6 +34,35 @@ const NAV_ITEMS = [
 	{ to: "/map", label: "World Map" },
 	{ to: "/import", label: "Import" },
 ];
+
+/**
+ * Thin bar across the top of the content area while the analytics worker is
+ * crunching something.
+ *
+ * It exists because "instant" must still be honest: a navigation that has to
+ * wait ~200ms for a recompute should say so, rather than being indistinguishable
+ * from a hung tab. A page's own `PageSkeleton` says the same thing at page
+ * granularity; this says it for the smaller range changes that keep the old
+ * numbers on screen.
+ */
+function AnalyticsProgress() {
+	const pending = useSyncExternalStore(
+		subscribeAnalyticsPending,
+		pendingAnalytics,
+		pendingAnalytics,
+	);
+	if (pending === 0) return null;
+	return (
+		<div
+			role="status"
+			aria-live="polite"
+			className="h-0.5 w-full overflow-hidden bg-muted/40"
+		>
+			<span className="sr-only">Updating…</span>
+			<div className="h-full w-1/3 animate-pulse bg-primary" />
+		</div>
+	);
+}
 
 export default function App() {
 	// Load the dataset once at startup (BLUEPRINT §1.2: everything lives in
@@ -82,17 +115,20 @@ export default function App() {
 					GitHub
 				</a>
 			</nav>
-			<main className="flex-1 p-6">
-				<ErrorBoundary>
-					<Routes>
-						<Route path="/" element={<Navigate to="/music" replace />} />
-						<Route path="/music" element={<MusicView />} />
-						<Route path="/video" element={<VideoView />} />
-						<Route path="/map" element={<MapWorldView />} />
-						<Route path="/import" element={<ImportView />} />
-						<Route path="*" element={<Navigate to="/music" replace />} />
-					</Routes>
-				</ErrorBoundary>
+			<main className="flex-1">
+				<AnalyticsProgress />
+				<div className="p-6">
+					<ErrorBoundary>
+						<Routes>
+							<Route path="/" element={<Navigate to="/music" replace />} />
+							<Route path="/music" element={<MusicView />} />
+							<Route path="/video" element={<VideoView />} />
+							<Route path="/map" element={<MapWorldView />} />
+							<Route path="/import" element={<ImportView />} />
+							<Route path="*" element={<Navigate to="/music" replace />} />
+						</Routes>
+					</ErrorBoundary>
+				</div>
 			</main>
 		</div>
 	);
