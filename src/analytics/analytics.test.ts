@@ -117,6 +117,59 @@ describe("buckets", () => {
 		expect(bucketKey(T(2026, 1, 5), "year")).toBe("2026");
 	});
 
+	it("keys months zero-padded across a year boundary", () => {
+		expect(bucketKey(T(2025, 12, 1), "month")).toBe("2025-12");
+		expect(bucketKey(T(2026, 1, 1), "month")).toBe("2026-01");
+		expect(bucketKey(T(2026, 9, 30), "month")).toBe("2026-09");
+		expect(bucketKey(T(2026, 11, 1), "month")).toBe("2026-11");
+	});
+
+	it("keeps month keys distinct across two years", () => {
+		// Guards against a bare month index collapsing 2026-01 onto 2025-01.
+		const keys: string[] = [];
+		for (const year of [2026, 2027]) {
+			for (let month = 1; month <= 12; month++)
+				keys.push(bucketKey(T(year, month, 1), "month"));
+		}
+		expect(keys).toHaveLength(24);
+		expect(new Set(keys).size).toBe(24);
+	});
+
+	it("keys weeks by ISO week-numbering year, not calendar year", () => {
+		// Both of these are ISO 2026-W01; calendar year would label them
+		// 2026-W01 and 2025-W01, so the 12-29 row would be dropped.
+		expect(bucketKey(T(2026, 1, 1), "week")).toBe("2026-W01");
+		expect(bucketKey(T(2025, 12, 29), "week")).toBe("2026-W01");
+		expect(bucketKey(T(2027, 1, 1), "week")).toBe("2026-W53");
+	});
+
+	it("emits unique, ascending week keys across New Year", () => {
+		const keys = buildBucketSpans(T(2025, 11, 1), T(2027, 2, 1), "week").map(
+			(s) => s.key,
+		);
+		expect(keys.length).toBeGreaterThan(50);
+		expect(new Set(keys).size).toBe(keys.length);
+		expect([...keys].sort()).toEqual(keys);
+		expect(keys.slice(0, 3)).toEqual(["2025-W44", "2025-W45", "2025-W46"]);
+	});
+
+	it("drops no day around New Year", () => {
+		const from = T(2025, 12, 1);
+		const to = T(2026, 2, 1);
+		const days: StreamRecord[] = [];
+		let id = 0;
+		for (let ts = from; ts < to; ts += 86_400_000)
+			days.push(rec({ id: `d${id++}`, ts }));
+		const points = scopedSeries(
+			days,
+			{ from, to },
+			"week",
+			{},
+			{ kind: "music" },
+		);
+		expect(points.reduce((s, p) => s + p.plays, 0)).toBe(days.length);
+	});
+
 	it("auto-picks granularity by span length", () => {
 		expect(autoBucket(T(2026, 1, 1), T(2026, 3, 1))).toBe("week");
 		expect(autoBucket(T(2020, 1, 1), T(2026, 1, 1))).toBe("year");
