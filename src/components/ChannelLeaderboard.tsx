@@ -1,7 +1,12 @@
+import { memo } from "react";
 import type { ChannelAgg } from "@/analytics/youtube";
 
 /** YouTube channel leaderboard with share bars and first-watch dates. */
-export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
+export const ChannelLeaderboard = memo(function ChannelLeaderboard({
+	channels,
+}: {
+	channels: ChannelAgg[];
+}) {
 	const max = channels[0]?.plays ?? 0;
 
 	if (channels.length === 0) {
@@ -69,4 +74,4 @@ export function ChannelLeaderboard({ channels }: { channels: ChannelAgg[] }) {
 			</table>
 		</div>
 	);
-}
+});

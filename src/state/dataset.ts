@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getDatasetMeta, loadAllStreams } from "@/db/db";
 import type { DatasetMeta, StreamRecord } from "@/db/types";
+import { resetTrackKeyMemo } from "@/ingestion/titleParse";
 import { resetSeriesColors } from "@/lib/palette";
 
 interface DatasetState {
@@ -28,6 +29,10 @@ export const useDatasetStore = create<DatasetState>((set) => ({
 			([records, meta]) => {
 				if (seq !== loadSeq) return; // a newer reload superseded this one
 				resetSeriesColors(); // colors follow entities; new dataset invalidates registry
+				// Memoized track keys are keyed by title, so entries for titles this
+				// dataset no longer holds are dead weight rather than wrong. Drop
+				// them anyway so a long-lived tab does not accumulate them.
+				resetTrackKeyMemo();
 				set({ status: "ready", records, meta });
 			},
 		);

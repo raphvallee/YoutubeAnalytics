@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
 	Area,
 	AreaChart,
@@ -14,7 +15,11 @@ import { ChartTooltip } from "./ChartTooltip";
 const AXIS_STYLE = { fontSize: 11, fill: "#898781" } as const;
 
 /** Single-artist play frequency per bucket, gap-filled with zeros - §3.3. */
-export function ArtistAffinityChart({ points }: { points: SeriesPoint[] }) {
+export const ArtistAffinityChart = memo(function ArtistAffinityChart({
+	points,
+}: {
+	points: SeriesPoint[];
+}) {
 	return (
 		<div
 			className="h-full"
@@ -67,4 +72,4 @@ export function ArtistAffinityChart({ points }: { points: SeriesPoint[] }) {
 			</ResponsiveContainer>
 		</div>
 	);
-}
+});

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ArtistDelta } from "@/analytics/compare";
 import { type ArtistAgg, estSeconds } from "@/analytics/queries";
 import { formatDuration } from "@/lib/format";
@@ -6,7 +7,7 @@ import { formatDuration } from "@/lib/format";
  * Ranked favorite artists. Row click opens the artist profile drawer.
  * Text stays in ink tokens; a muted share bar carries magnitude.
  */
-export function ArtistLeaderboard({
+export const ArtistLeaderboard = memo(function ArtistLeaderboard({
 	artists,
 	onSelect,
 	likesByArtist,
@@ -105,7 +106,7 @@ export function ArtistLeaderboard({
 			</table>
 		</div>
 	);
-}
+});
 
 /** Snapshot delta: arrow glyph carries the direction, color is a cue. */
 function DeltaCell({ delta }: { delta: ArtistDelta | undefined }) {
