@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { estSeconds, type TrackAgg } from "@/analytics/queries";
 import { formatDuration } from "@/lib/format";
 
-export function TopTracksTable({
+export const TopTracksTable = memo(function TopTracksTable({
 	tracks,
 	showArtist = true,
 }: {
@@ -67,4 +68,4 @@ export function TopTracksTable({
 			</table>
 		</div>
 	);
-}
+});

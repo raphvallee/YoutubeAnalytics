@@ -4,7 +4,7 @@
  */
 
 import type { StreamRecord } from "@/db/types";
-import { trackKeyOf } from "@/ingestion/titleParse";
+import { trackKeyOfMemo } from "@/ingestion/titleParse";
 import {
 	type Bucket,
 	type BucketSpan,
@@ -107,12 +107,15 @@ export function topTracks(
 	for (const r of records) {
 		if (r.kind !== "music" || !inRange(r, range, opts)) continue;
 		if (artistKey !== undefined && r.artistKey !== artistKey) continue;
-		const key = `${r.artistKey}|${trackKeyOf(r.title)}`;
+		// One key evaluation per row: this doubles as the aggregate's
+		// `trackKey` field, so do not recompute it in the `if (!agg)` branch.
+		const trackKey = trackKeyOfMemo(r.title);
+		const key = `${r.artistKey}|${trackKey}`;
 		let agg = counts.get(key);
 		if (!agg) {
 			agg = {
 				title: r.title,
-				trackKey: trackKeyOf(r.title),
+				trackKey,
 				artist: r.artist,
 				artistKey: r.artistKey,
 				plays: 0,
@@ -236,17 +239,33 @@ export function trackErasSeries(
 		bucket?: Bucket;
 		topN?: number;
 		artistKey?: string | null;
+		/**
+		 * Pre-computed top-N tracks, already truncated to `topN`. MusicView
+		 * needs `topTracks` for the leaderboard anyway, so passing it here
+		 * removes a second identical full-dataset pass. Equivalent to letting
+		 * this function compute it: `topTracks` sorts before it slices, so
+		 * `topTracks(limit: 25).slice(0, 8)` equals `topTracks(limit: 8)`.
+		 */
+		tracks?: TrackAgg[];
 	} = {},
 ): { rows: StackRow[]; seriesNames: string[]; bucket: Bucket } {
 	const bucket = opts.bucket ?? "month";
 	const topN = opts.topN ?? 20;
-	const tracks = topTracks(records, range, opts, {
-		artistKey: opts.artistKey,
-		limit: topN,
-	});
-	const topKeys = new Set(
-		tracks.map((t) => `${t.artistKey}|${trackKeyOf(t.title)}`),
-	);
+	const tracks =
+		opts.tracks ??
+		topTracks(records, range, opts, {
+			artistKey: opts.artistKey,
+			limit: topN,
+		});
+	// Identity -> display title, built once. Doubles as the top-N membership set.
+	// The row loop below used to call `tracks.find` with a track key evaluation
+	// inside the predicate, which re-ran four regexes per (bucket x series)
+	// comparison.
+	const titleByIdentity = new Map<string, string>();
+	for (const t of tracks) {
+		const identity = `${t.artistKey}|${trackKeyOfMemo(t.title)}`;
+		if (!titleByIdentity.has(identity)) titleByIdentity.set(identity, t.title);
+	}
 	const seriesNames = tracks.map((t) => t.title);
 
 	const spans = buildBucketSpans(range.from, range.to, bucket);
@@ -257,8 +276,8 @@ export function trackErasSeries(
 		if (r.kind !== "music" || !inRange(r, range, opts)) continue;
 		if (opts.artistKey !== undefined && r.artistKey !== opts.artistKey)
 			continue;
-		const identity = `${r.artistKey}|${trackKeyOf(r.title)}`;
-		if (!topKeys.has(identity)) continue;
+		const identity = `${r.artistKey}|${trackKeyOfMemo(r.title)}`;
+		if (!titleByIdentity.has(identity)) continue;
 		const bKey = bucketKey(r.ts, bucket);
 		if (!spanKeys.has(bKey)) continue;
 		let row = perBucket.get(bKey);
@@ -275,10 +294,7 @@ export function trackErasSeries(
 		const bucketRow = perBucket.get(s.key);
 		if (bucketRow) {
 			for (const [identity, plays] of bucketRow) {
-				const track = tracks.find(
-					(t) => `${t.artistKey}|${trackKeyOf(t.title)}` === identity,
-				);
-				const name = track?.title ?? identity;
+				const name = titleByIdentity.get(identity) ?? identity;
 				row[name] = (row[name] as number) + plays;
 			}
 		}
@@ -317,7 +333,7 @@ export function musicSummary(
 		totalPlays += 1;
 		if (r.artistKey) artists.add(r.artistKey);
 		else unattributed += 1;
-		tracks.add(`${r.artistKey}|${trackKeyOf(r.title)}`);
+		tracks.add(`${r.artistKey}|${trackKeyOfMemo(r.title)}`);
 	}
 	return {
 		totalPlays,

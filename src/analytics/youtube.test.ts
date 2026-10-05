@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StreamRecord } from "@/db/types";
 import {
 	hourHistogram,
+	hourWeekdayHistogram,
 	topChannels,
 	weekdayHistogram,
 	youtubeSummary,
@@ -84,6 +85,68 @@ describe("hourHistogram / weekdayHistogram", () => {
 		const d = weekdayHistogram(r, { from: 0, to: Number.MAX_SAFE_INTEGER });
 		expect(d[0]).toBe(1); // Monday
 		expect(d[6]).toBe(1); // Sunday
+	});
+});
+
+describe("hourWeekdayHistogram", () => {
+	it("is byte-identical to hourHistogram + weekdayHistogram", () => {
+		const merged = hourWeekdayHistogram(R, RANGE);
+		expect(merged.hours).toEqual(hourHistogram(R, RANGE));
+		expect(merged.weekdays).toEqual(weekdayHistogram(R, RANGE));
+	});
+
+	it("agrees on out-of-range, music and ad-driven rows too", () => {
+		const mixed = [
+			...R,
+			yt({ id: "pre", ts: T(2025, 12, 31, 23) }), // before range
+			yt({ id: "post", ts: T(2026, 4, 2, 7) }), // after range
+			yt({ id: "on-from", ts: T(2026, 1, 1, 12) }), // inclusive edges
+			yt({ id: "on-to", ts: T(2026, 3, 1, 12) }),
+			yt({ id: "sat", ts: T(2026, 1, 10, 15) }),
+			yt({ id: "sun", ts: T(2026, 1, 11, 3) }),
+			yt({ id: "music-ads", ts: T(2026, 1, 8, 20), kind: "music" }),
+		];
+		const merged = hourWeekdayHistogram(mixed, RANGE);
+		expect(merged.hours).toEqual(hourHistogram(mixed, RANGE));
+		expect(merged.weekdays).toEqual(weekdayHistogram(mixed, RANGE));
+		// 4 organic rows from R (ad + music excluded) + 4 of the 5 added in-range
+		// youtube rows ("music-ads" excluded) = 8 counted.
+		expect(merged.hours.reduce((a, b) => a + b, 0)).toBe(8);
+	});
+
+	it("agrees with both originals when includeAds is set", () => {
+		const opts = { includeAds: true };
+		const merged = hourWeekdayHistogram(R, RANGE, opts);
+		expect(merged.hours).toEqual(hourHistogram(R, RANGE, opts));
+		expect(merged.weekdays).toEqual(weekdayHistogram(R, RANGE, opts));
+		expect(merged.hours[12]).toBe(1); // the ad row now counts, music still does not
+	});
+
+	it("keeps 24 hour slots and Monday-first weekday indexing", () => {
+		const merged = hourWeekdayHistogram(R, RANGE);
+		expect(merged.hours).toHaveLength(24);
+		expect(merged.weekdays).toHaveLength(7);
+		// R: Mon 01-05, Tue 01-06, Sat 01-10, Sun 02-01 (ad + music excluded).
+		expect(merged.weekdays).toEqual([1, 1, 0, 0, 0, 1, 1]);
+	});
+
+	it("maps Sunday to the last slot, like weekdayHistogram", () => {
+		// 2026-01-04 is a Sunday; 2026-01-05 is a Monday.
+		const r = [
+			yt({ id: "sun", ts: T(2026, 1, 4) }),
+			yt({ id: "mon", ts: T(2026, 1, 5) }),
+		];
+		const range = { from: 0, to: Number.MAX_SAFE_INTEGER };
+		const merged = hourWeekdayHistogram(r, range);
+		expect(merged.weekdays[0]).toBe(1); // Monday
+		expect(merged.weekdays[6]).toBe(1); // Sunday
+		expect(merged.weekdays).toEqual(weekdayHistogram(r, range));
+	});
+
+	it("returns empty histograms without records", () => {
+		const merged = hourWeekdayHistogram([], RANGE);
+		expect(merged.hours).toEqual(new Array<number>(24).fill(0));
+		expect(merged.weekdays).toEqual(new Array<number>(7).fill(0));
 	});
 });
 

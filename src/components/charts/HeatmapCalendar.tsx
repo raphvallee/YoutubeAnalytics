@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { buildCalendar, type HeatCell } from "@/analytics/heatmap";
 import type { StreamRecord } from "@/db/types";
 
@@ -28,7 +28,11 @@ const WEEKDAY_LABELS = [
 
 const PAD_KEYS = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
 
-export function HeatmapCalendar({ records }: { records: StreamRecord[] }) {
+export const HeatmapCalendar = memo(function HeatmapCalendar({
+	records,
+}: {
+	records: StreamRecord[];
+}) {
 	const calendar = useMemo(() => buildCalendar(records), [records]);
 	const cellsByDay = useMemo(
 		() =>
@@ -135,4 +139,4 @@ export function HeatmapCalendar({ records }: { records: StreamRecord[] }) {
 			</div>
 		</div>
 	);
-}
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { autoBucket } from "@/analytics/buckets";
 import { compareArtists } from "@/analytics/compare";
@@ -13,7 +13,7 @@ import {
 	topTracks,
 	trackErasSeries,
 } from "@/analytics/queries";
-import { topReleases } from "@/analytics/releases";
+import type { ReleaseAgg } from "@/analytics/releases";
 import { ArtistDrawer } from "@/components/ArtistDrawer";
 import { ArtistLeaderboard } from "@/components/ArtistLeaderboard";
 import { ChartCard } from "@/components/ChartCard";
@@ -30,6 +30,13 @@ import { useDatasetStore } from "@/state/dataset";
 import { resolveRange, useFilterStore } from "@/state/filters";
 import { useLikesStore } from "@/state/likes";
 import { useSnapshotsStore } from "@/state/snapshots";
+
+/** Rows in the "Top tracks" table, and the ranking depth feeding "Track eras". */
+const TRACK_TABLE_LIMIT = 25;
+/** Series count in the stacked era charts; must match the chart colour palette. */
+const ERAS_SERIES = 8;
+/** See the `releases` memo: there is no release data source to aggregate. */
+const NO_RELEASES: ReleaseAgg[] = [];
 
 export default function MusicView() {
 	const { status, records, meta, reload } = useDatasetStore();
@@ -54,24 +61,46 @@ export default function MusicView() {
 			resolveRange(filterState, meta?.minTs ?? 0, meta?.maxTs ?? Date.now()),
 		[filterState, meta],
 	);
+	// Depend on the range's two primitives, not the `range` object. `resolveRange`
+	// mints a fresh object on every call, so an object dep invalidated all nine
+	// query memos below on every filter-store write - including every keystroke in
+	// the custom-date inputs. Do NOT narrow the deps of the memo above: it calls
+	// `Date.now()` for the relative presets, so keying it on from/to would freeze
+	// "Last 7 days" at whatever instant it first resolved.
+	const { from, to } = range;
 
 	const years = useMemo(() => availableYears(records), [records]);
-	const summary = useMemo(() => musicSummary(records, range), [records, range]);
+	const summary = useMemo(
+		() => musicSummary(records, { from, to }),
+		[records, from, to],
+	);
 	const artists = useMemo(
-		() => topArtists(records, range, {}, 25),
-		[records, range],
+		() => topArtists(records, { from, to }, {}, 25),
+		[records, from, to],
 	);
 	const tracks = useMemo(
-		() => topTracks(records, range, {}, { limit: 25 }),
-		[records, range],
+		() => topTracks(records, { from, to }, {}, { limit: TRACK_TABLE_LIMIT }),
+		[records, from, to],
 	);
 	const macro = useMemo(
-		() => macroSeries(records, range, { bucket: "month", topN: 8 }),
-		[records, range],
+		() => macroSeries(records, { from, to }, { bucket: "month", topN: 8 }),
+		[records, from, to],
 	);
 	const eras = useMemo(
-		() => trackErasSeries(records, range, { bucket: "month", topN: 8 }),
-		[records, range],
+		() =>
+			trackErasSeries(
+				records,
+				{ from, to },
+				{
+					bucket: "month",
+					topN: 8,
+					// Reuse the leaderboard's ranking instead of recomputing it.
+					// `topTracks` sorts before it slices, so this slice equals
+					// `topTracks(limit: 8)`.
+					tracks: tracks.slice(0, ERAS_SERIES),
+				},
+			),
+		[records, from, to, tracks],
 	);
 
 	const likesMatch = useMemo(
@@ -86,46 +115,65 @@ export default function MusicView() {
 	} | null>(null);
 	const [expand, setExpand] = useState(false);
 
-	const affinityBucket = autoBucket(range.from, range.to);
+	const affinityBucket = autoBucket(from, to);
+	// Only rendered inside the `{snapActive && ...}` compare card below, so skip
+	// the pass entirely when compare is off. Worth 122ms on short ranges, where
+	// `autoBucket` picks "week".
 	const currentTrend = useMemo(
-		() => scopedSeries(records, range, affinityBucket, {}, { kind: "music" }),
-		[records, range, affinityBucket],
+		() =>
+			snapActive
+				? scopedSeries(
+						records,
+						{ from, to },
+						affinityBucket,
+						{},
+						{ kind: "music" },
+					)
+				: [],
+		[records, from, to, affinityBucket, snapActive],
 	);
 	const snapTrend = useMemo(
 		() =>
-			snapRecords
+			snapActive && snapRecords.length > 0
 				? scopedSeries(
 						snapRecords,
-						range,
+						{ from, to },
 						affinityBucket,
 						{},
 						{ kind: "music" },
 					)
 				: null,
-		[snapRecords, range, affinityBucket],
+		[snapRecords, from, to, affinityBucket, snapActive],
 	);
+	// Keyed on `snapActive`, not `snapRecords`: the store initialises `records` to
+	// `[]`, which is truthy, so the old truthiness check always produced a delta
+	// map and the leaderboard rendered "new" against a snapshot that was not
+	// selected.
 	const deltas = useMemo(
 		() =>
-			snapRecords ? compareArtists(artists, snapRecords, range) : undefined,
-		[artists, snapRecords, range],
+			snapActive
+				? compareArtists(artists, snapRecords, { from, to })
+				: undefined,
+		[artists, snapRecords, from, to, snapActive],
 	);
-	const releases = useMemo(
-		() => topReleases(records, [], range),
-		[records, range],
-	);
+	// No release-enrichment data source is wired up (there is no `mbReleases`
+	// table and no writer), so `topReleases` could only ever return []. Computing
+	// it meant a full 120k scan to guarantee an empty list; the card renders its
+	// empty state either way.
+	const releases = NO_RELEASES;
 
 	const affinity = useMemo(
 		() =>
 			selected
 				? scopedSeries(
 						records,
-						range,
+						{ from, to },
 						affinityBucket,
 						{},
 						{ kind: "music", artistKey: selected.key },
 					)
 				: [],
-		[records, range, affinityBucket, selected],
+		[records, from, to, affinityBucket, selected],
 	);
 	const affinityTotal = useMemo(
 		() => affinity.reduce((s, p) => s + p.plays, 0),
@@ -134,21 +182,37 @@ export default function MusicView() {
 	const artistTracks = useMemo(
 		() =>
 			selected
-				? topTracks(records, range, {}, { artistKey: selected.key, limit: 10 })
+				? topTracks(
+						records,
+						{ from, to },
+						{},
+						{ artistKey: selected.key, limit: 10 },
+					)
 				: [],
-		[records, range, selected],
+		[records, from, to, selected],
 	);
 	const artistEras = useMemo(
 		() =>
 			selected
-				? trackErasSeries(records, range, {
-						bucket: "month",
-						topN: 8,
-						artistKey: selected.key,
-					})
+				? trackErasSeries(
+						records,
+						{ from, to },
+						{
+							bucket: "month",
+							topN: 8,
+							artistKey: selected.key,
+						},
+					)
 				: null,
-		[records, range, selected],
+		[records, from, to, selected],
 	);
+
+	// Stable identities so the memoized leaderboard / drawer can actually bail
+	// out. Without these a fresh closure per render defeats React.memo entirely.
+	const selectArtist = useCallback((key: string, name: string) => {
+		setSelected({ key, name });
+	}, []);
+	const closeDrawer = useCallback(() => setSelected(null), []);
 
 	if (status !== "ready") {
 		return <LoadingDataset />;
@@ -192,7 +256,7 @@ export default function MusicView() {
 			>
 				<ArtistLeaderboard
 					artists={artists}
-					onSelect={(key, name) => setSelected({ key, name })}
+					onSelect={selectArtist}
 					likesByArtist={likesMatch.total > 0 ? likesMatch.byArtist : undefined}
 					deltas={deltas}
 				/>
@@ -266,7 +330,7 @@ export default function MusicView() {
 
 			<ArtistDrawer
 				open={selected !== null}
-				onClose={() => setSelected(null)}
+				onClose={closeDrawer}
 				title={selected?.name ?? ""}
 			>
 				{selected && (

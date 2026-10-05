@@ -3,6 +3,7 @@ import {
 	addWeeks,
 	addYears,
 	getISOWeek,
+	getISOWeekYear,
 	startOfISOWeek,
 	startOfMonth,
 	startOfYear,
@@ -41,8 +42,15 @@ export function bucketKey(ts: number, bucket: Bucket): string {
 	const y = d.getFullYear();
 	switch (bucket) {
 		case "week": {
+			// ISO week-numbering year, NOT the calendar year. The two disagree
+			// around New Year: 2025-12-29 is calendar 2025 but ISO week-year
+			// 2026 W01, and 2027-01-01 is calendar 2027 but ISO 2026 W53. Mixing
+			// the calendar year with the ISO week number makes bucketKey emit
+			// keys buildBucketSpans never produces, so spans silently drop those
+			// plays and the axis labels come out unsorted. Do not "simplify" this
+			// back to d.getFullYear().
 			const w = getISOWeek(d);
-			return `${y}-W${String(w).padStart(2, "0")}`;
+			return `${getISOWeekYear(d)}-W${String(w).padStart(2, "0")}`;
 		}
 		case "month":
 			return `${y}-${String(d.getMonth() + 1).padStart(2, "0")}`;

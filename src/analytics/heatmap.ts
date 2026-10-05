@@ -3,12 +3,58 @@
  * GitHub-style month columns (Mon-first weeks). Pure: no React, no DB.
  */
 import type { StreamRecord } from "@/db/types";
-import { inRange, type QueryOptions } from "./queries";
+import { inRange, type QueryOptions, type Range } from "./queries";
 
-/** Local-midnight instant of the day containing `ts`. */
+const DAY_MS = 86_400_000;
+
+/** `dayCounts` buckets the whole dataset, so it never clips by timestamp. */
+const ALL_TIME: Range = {
+	from: Number.NEGATIVE_INFINITY,
+	to: Number.POSITIVE_INFINITY,
+};
+
+/**
+ * Whole local days since the epoch, from `d`'s own local calendar. The local
+ * wall clock of `ts` is `ts - offset`, so flooring it into 24h blocks gives the
+ * local day ordinal - local, DST-proof and UTC-ordinal-preserving, unlike
+ * `Math.floor(ts / DAY_MS)`.
+ */
+function localDayOrdinal(ts: number, d: Date): number {
+	return Math.floor((ts - d.getTimezoneOffset() * 60_000) / DAY_MS);
+}
+
+/**
+ * Local-midnight instant of the day containing `ts`.
+ *
+ * One `Date` per call: subtracting this Date's own elapsed local time lands on
+ * local midnight, unless a DST transition inside the day stretched or shrank
+ * it to 23h/25h. Re-reading the same `Date` at the candidate detects that, and
+ * such transition days (a handful per year) fall back to the calendar.
+ */
 export function dayStart(ts: number): number {
 	const d = new Date(ts);
-	return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+	const y = d.getFullYear();
+	const m = d.getMonth();
+	const day = d.getDate();
+	const midnight =
+		ts -
+		((d.getHours() * 60 + d.getMinutes()) * 60_000 +
+			d.getSeconds() * 1_000 +
+			d.getMilliseconds());
+	d.setTime(midnight);
+	// Local midnight iff that instant reads back as the same day at 00:00:00.000.
+	if (
+		d.getFullYear() !== y ||
+		d.getMonth() !== m ||
+		d.getDate() !== day ||
+		d.getHours() !== 0 ||
+		d.getMinutes() !== 0 ||
+		d.getSeconds() !== 0 ||
+		d.getMilliseconds() !== 0
+	) {
+		return new Date(y, m, day).getTime();
+	}
+	return midnight;
 }
 
 /** Plays per local day (organic rows only, unless includeAds). */
@@ -17,16 +63,19 @@ export function dayCounts(
 	opts: QueryOptions = {},
 ): Map<number, number> {
 	const counts = new Map<number, number>();
+	// Local day ordinal -> local midnight, memoized for this call only. Rows
+	// arrive unordered, but a whole history spans few distinct days, so the
+	// per-row work is one Date + one Map hit instead of two Dates.
+	const midnightOf = new Map<number, number>();
 	for (const r of records) {
-		if (
-			!inRange(
-				r,
-				{ from: Number.NEGATIVE_INFINITY, to: Number.POSITIVE_INFINITY },
-				opts,
-			)
-		)
-			continue;
-		const day = dayStart(r.ts);
+		if (!inRange(r, ALL_TIME, opts)) continue;
+		const d = new Date(r.ts);
+		const ordinal = localDayOrdinal(r.ts, d);
+		let day = midnightOf.get(ordinal);
+		if (day === undefined) {
+			day = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+			midnightOf.set(ordinal, day);
+		}
 		counts.set(day, (counts.get(day) ?? 0) + 1);
 	}
 	return counts;

@@ -3,9 +3,8 @@ import { Link } from "react-router";
 import { autoBucket } from "@/analytics/buckets";
 import { availableYears } from "@/analytics/queries";
 import {
-	hourHistogram,
+	hourWeekdayHistogram,
 	topChannels,
-	weekdayHistogram,
 	youtubeSummary,
 	youtubeTrend,
 } from "@/analytics/youtube";
@@ -36,39 +35,49 @@ export default function VideoView() {
 			resolveRange(filterState, meta?.minTs ?? 0, meta?.maxTs ?? Date.now()),
 		[filterState, meta],
 	);
+	// Depend on the range's two primitives, not the `range` object - see the note
+	// in MusicView. Do NOT narrow the deps of the memo above: `resolveRange` calls
+	// `Date.now()`, so keying it on from/to would freeze the relative presets.
+	const { from, to } = range;
 
 	const years = useMemo(() => availableYears(records), [records]);
 	const summary = useMemo(
-		() => youtubeSummary(records, range),
-		[records, range],
+		() => youtubeSummary(records, { from, to }),
+		[records, from, to],
 	);
 	const channels = useMemo(
-		() => topChannels(records, range, {}, 25),
-		[records, range],
+		() => topChannels(records, { from, to }, {}, 25),
+		[records, from, to],
 	);
-	const hours = useMemo(() => hourHistogram(records, range), [records, range]);
-	const weekdays = useMemo(
-		() => weekdayHistogram(records, range),
-		[records, range],
+	// One pass, one `Date` per row, for both histograms. They apply the same
+	// predicate, so a single scan produces both.
+	const histograms = useMemo(
+		() => hourWeekdayHistogram(records, { from, to }),
+		[records, from, to],
 	);
-	const trendBucket = autoBucket(range.from, range.to);
+	const trendBucket = autoBucket(from, to);
 	const trend = useMemo(
-		() => youtubeTrend(records, range, trendBucket),
-		[records, range, trendBucket],
+		() => youtubeTrend(records, { from, to }, trendBucket),
+		[records, from, to, trendBucket],
 	);
 
 	const hourData = useMemo(() => {
+		const hours = histograms.hours;
 		const peak = hours.indexOf(Math.max(...hours));
 		return hours.map((value, h) => ({
 			label: String(h).padStart(2, "0"),
 			value,
 			color: value > 0 && h === peak ? ACCENT : undefined,
 		}));
-	}, [hours]);
+	}, [histograms]);
 
 	const weekdayData = useMemo(
-		() => WEEKDAYS.map((label, i) => ({ label, value: weekdays[i] ?? 0 })),
-		[weekdays],
+		() =>
+			WEEKDAYS.map((label, i) => ({
+				label,
+				value: histograms.weekdays[i] ?? 0,
+			})),
+		[histograms],
 	);
 
 	if (status !== "ready") {

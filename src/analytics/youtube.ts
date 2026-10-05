@@ -79,6 +79,32 @@ export function weekdayHistogram(
 	return days;
 }
 
+/**
+ * Both histograms from a single pass over `records`, one `Date` per row.
+ * Byte-identical to calling `hourHistogram` + `weekdayHistogram` separately:
+ * same `youtube`-kind and range/ad predicate, same index conventions
+ * (0-23 local hour, Monday-first weekdays). Cheaper because the predicate
+ * runs once per row instead of twice and the `Date` is built once.
+ */
+export function hourWeekdayHistogram(
+	records: StreamRecord[],
+	range: Range,
+	opts: QueryOptions = {},
+): { hours: number[]; weekdays: number[] } {
+	const hours = new Array<number>(24).fill(0);
+	const weekdays = new Array<number>(7).fill(0);
+	for (const r of records) {
+		if (r.kind !== "youtube" || !inRange(r, range, opts)) continue;
+		const d = new Date(r.ts);
+		const h = d.getHours();
+		hours[h] = (hours[h] ?? 0) + 1;
+		// getDay(): 0=Sunday..6=Saturday; map to Monday-first index.
+		const i = (d.getDay() + 6) % 7;
+		weekdays[i] = (weekdays[i] ?? 0) + 1;
+	}
+	return { hours, weekdays };
+}
+
 export interface TrendPoint {
 	key: string;
 	plays: number;

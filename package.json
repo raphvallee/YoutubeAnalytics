@@ -12,7 +12,10 @@
 		"format": "biome format --write .",
 		"check": "biome check .",
 		"test:e2e": "playwright test",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"golden:setup": "bun scripts/golden-setup.ts",
+		"golden": "bun scripts/golden-check.ts",
+		"bench:ab": "bun scripts/bench-ab.ts"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.8.0",

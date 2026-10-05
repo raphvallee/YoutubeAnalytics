@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
 	Bar,
 	BarChart,
@@ -24,7 +25,7 @@ export interface BarDatum {
  * Single-series categorical bar chart (hours, weekdays). One hue; a peak bar
  * may take the accent slot. No legend (single series) - BLUEPRINT §4.4.
  */
-export function BarsChart({
+export const BarsChart = memo(function BarsChart({
 	data,
 	label,
 }: {
@@ -86,4 +87,4 @@ export function BarsChart({
 			</ResponsiveContainer>
 		</div>
 	);
-}
+});

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
 	CartesianGrid,
 	Line,
@@ -14,7 +14,7 @@ const AXIS_STYLE = { fontSize: 11, fill: "#898781" } as const;
 const BLUE = SERIES_COLORS[0] ?? "#3987e5";
 
 /** Single-series monthly trend line. Zero months render as gaps to zero. */
-export function TrendLineChart({
+export const TrendLineChart = memo(function TrendLineChart({
 	data,
 	compareData,
 	label,
@@ -125,4 +125,4 @@ export function TrendLineChart({
 			)}
 		</div>
 	);
-}
+});

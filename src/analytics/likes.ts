@@ -5,7 +5,7 @@
  */
 
 import type { LikedTrack, StreamRecord } from "@/db/types";
-import { trackKeyOf } from "@/ingestion/titleParse";
+import { trackKeyOfMemo } from "@/ingestion/titleParse";
 
 export interface LikesMatch {
 	/** artistKey -> like count (matched likes only). */
@@ -19,12 +19,19 @@ export function matchLikes(
 	likes: LikedTrack[],
 	records: StreamRecord[],
 ): LikesMatch {
+	// Both indexes below cost a full pass over `records` with a track key per
+	// music row. Likes are opt-in, so with none uploaded the answer is known
+	// without reading a single record - bail before building either index.
+	if (likes.length === 0) {
+		return { byArtist: new Map(), matched: 0, unmatched: 0, total: 0 };
+	}
+
 	const byVideoId = new Map<string, string>();
 	const byIdentity = new Map<string, string>();
 	for (const r of records) {
 		if (r.kind !== "music" || !r.artistKey) continue;
 		if (r.videoId) byVideoId.set(r.videoId, r.artistKey);
-		byIdentity.set(`${r.artistKey}|${trackKeyOf(r.title)}`, r.artistKey);
+		byIdentity.set(`${r.artistKey}|${trackKeyOfMemo(r.title)}`, r.artistKey);
 	}
 
 	const byArtist = new Map<string, number>();
@@ -38,7 +45,7 @@ export function matchLikes(
 			const channelKey = channel.endsWith(" - topic")
 				? channel.slice(0, -" - topic".length).trim()
 				: channel;
-			artistKey = byIdentity.get(`${channelKey}|${trackKeyOf(like.title)}`);
+			artistKey = byIdentity.get(`${channelKey}|${trackKeyOfMemo(like.title)}`);
 		}
 		if (!artistKey) continue;
 		matched += 1;

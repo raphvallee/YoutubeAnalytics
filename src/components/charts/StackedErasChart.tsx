@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
 	Area,
 	AreaChart,
@@ -20,7 +20,7 @@ const AXIS_STYLE = { fontSize: 11, fill: "#898781" } as const;
  * `expand` mode = share-of-listening (stackOffset expand).
  * Legend chips hover-isolate a series (dims the others).
  */
-export function StackedErasChart({
+export const StackedErasChart = memo(function StackedErasChart({
 	rows,
 	seriesNames,
 	height = 300,
@@ -133,4 +133,4 @@ export function StackedErasChart({
 			)}
 		</div>
 	);
-}
+});
