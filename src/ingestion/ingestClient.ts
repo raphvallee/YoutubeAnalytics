@@ -13,8 +13,18 @@ import type {
 
 export interface IngestProgress {
 	phase: IngestPhase;
-	fileIndex: number;
+	/**
+	 * 0-based position of the file currently being handled, or null when the
+	 * phase is not about a single file (persisting). A null index is what keeps
+	 * the UI from printing a position one past the end of the batch.
+	 */
+	fileIndex: number | null;
 	fileCount: number;
+	/**
+	 * Rows in flight, and what it counts depends on the phase: for "normalize"
+	 * the rows kept from the file being parsed, for "persist" the whole batch
+	 * about to be written.
+	 */
 	rows?: number;
 }
 
