@@ -1,17 +1,16 @@
 /**
  * Watch-time heatmap calendar (Phase 6) - day-level play counts laid out as
  * GitHub-style month columns (Mon-first weeks). Pure: no React, no DB.
+ *
+ * Range-aware, like every other query here: counts are clipped to `range`, and
+ * the cells of the partial months at its edges carry `inRange: false` so the
+ * view can leave them blank. A day outside the window is not a day without
+ * plays, and the calendar must not draw it as one.
  */
 import type { StreamRecord } from "@/db/types";
 import { inRange, type QueryOptions, type Range } from "./queries";
 
 const DAY_MS = 86_400_000;
-
-/** `dayCounts` buckets the whole dataset, so it never clips by timestamp. */
-const ALL_TIME: Range = {
-	from: Number.NEGATIVE_INFINITY,
-	to: Number.POSITIVE_INFINITY,
-};
 
 /**
  * Whole local days since the epoch, from `d`'s own local calendar. The local
@@ -57,9 +56,10 @@ export function dayStart(ts: number): number {
 	return midnight;
 }
 
-/** Plays per local day (organic rows only, unless includeAds). */
+/** Plays per local day within `range` (organic rows only, unless includeAds). */
 export function dayCounts(
 	records: StreamRecord[],
+	range: Range,
 	opts: QueryOptions = {},
 ): Map<number, number> {
 	const counts = new Map<number, number>();
@@ -68,7 +68,7 @@ export function dayCounts(
 	// per-row work is one Date + one Map hit instead of two Dates.
 	const midnightOf = new Map<number, number>();
 	for (const r of records) {
-		if (!inRange(r, ALL_TIME, opts)) continue;
+		if (!inRange(r, range, opts)) continue;
 		const d = new Date(r.ts);
 		const ordinal = localDayOrdinal(r.ts, d);
 		let day = midnightOf.get(ordinal);
@@ -87,6 +87,12 @@ export interface HeatCell {
 	count: number;
 	/** 0 = no activity, 1..4 = intensity quartiles of the active days. */
 	level: 0 | 1 | 2 | 3 | 4;
+	/**
+	 * False for days the range excludes - only ever the partial months at the
+	 * edges of a custom range. Callers draw these blank: a day the filter leaves
+	 * out is not a day without plays.
+	 */
+	inRange: boolean;
 }
 
 export interface HeatMonth {
@@ -146,14 +152,18 @@ function levelOf(
 
 /**
  * Month-column calendar covering every month from the first to the last day
- * with activity (single-month data yields one column). Levels are quartiles
- * of the positive counts so the ramp stays meaningful at any scale.
+ * with activity inside `range` (single-month data yields one column). Levels
+ * are quartiles of the positive counts so the ramp stays meaningful at any
+ * scale, and the ramp spans only the range: cells the range excludes are
+ * flagged `inRange: false` with count 0, so a partial leading/trailing month
+ * cannot read as "nothing watched" when it is really "not selected".
  */
 export function buildCalendar(
 	records: StreamRecord[],
+	range: Range,
 	opts: QueryOptions = {},
 ): Calendar {
-	const counts = dayCounts(records, opts);
+	const counts = dayCounts(records, range, opts);
 	if (counts.size === 0) {
 		return { months: [], total: 0, activeDays: 0, max: 0 };
 	}
@@ -164,6 +174,16 @@ export function buildCalendar(
 	if (first === undefined || last === undefined) {
 		return { months: [], total: 0, activeDays: 0, max: 0 };
 	}
+
+	// Day granularity for the window edges: the range can start or end mid-day
+	// (the trailing presets do), and the cell that day lands in is still shown -
+	// it just counts the plays that fall inside the range.
+	const fromDay = Number.isFinite(range.from)
+		? dayStart(range.from)
+		: Number.NEGATIVE_INFINITY;
+	const toDay = Number.isFinite(range.to)
+		? dayStart(range.to)
+		: Number.POSITIVE_INFINITY;
 
 	const thresholds = levelThresholds([...counts.values()]);
 	const months: HeatMonth[] = [];
@@ -183,7 +203,12 @@ export function buildCalendar(
 		for (let d = 1; d <= dim; d++) {
 			const day = new Date(y, m, d).getTime();
 			const count = counts.get(day) ?? 0;
-			monthDays.push({ day, count, level: levelOf(count, thresholds) });
+			monthDays.push({
+				day,
+				count,
+				level: levelOf(count, thresholds),
+				inRange: day >= fromDay && day <= toDay,
+			});
 		}
 		months.push({
 			key: `${y}-${String(m + 1).padStart(2, "0")}`,

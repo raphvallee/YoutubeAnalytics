@@ -137,10 +137,15 @@ export default function VideoView() {
 
 			<ChartCard
 				title="Watch-time calendar"
-				subtitle="Streams per day across the whole dataset"
+				subtitle={
+					<>
+						Streams per day ·{" "}
+						<RangeLabel dataMin={meta.minTs} dataMax={meta.maxTs} />
+					</>
+				}
 				height={200}
 			>
-				<HeatmapCalendar records={records} />
+				<HeatmapCalendar records={records} from={from} to={to} />
 			</ChartCard>
 
 			<div className="grid gap-6 lg:grid-cols-2">

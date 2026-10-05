@@ -183,6 +183,75 @@ test("the page never scrolls sideways; an oversized chart scrolls itself", async
 	expect(layout.calendarScrollLeft).toBeGreaterThan(0);
 });
 
+test("the watch-time calendar follows the selected period", async ({
+	page,
+}) => {
+	await page.goto("/YoutubeAnalytics/import");
+	// Both fixtures, so the dataset straddles 2025 and 2026 and the per-year
+	// totals below have something to reconcile against.
+	await importFiles(page, [FIXTURE, SECOND_EXPORT]);
+	await expect(page.getByText("Imported dataset")).toBeVisible({
+		timeout: 15_000,
+	});
+
+	await page.goto("/YoutubeAnalytics/video");
+	const card = page.locator('section[aria-label="Watch-time calendar"]');
+	const calendar = card.getByRole("img", { name: /^Watch-time calendar:/ });
+	await expect(calendar).toBeVisible();
+
+	// The summary counts only the selected window, so it is the cheapest
+	// assertion that the range actually reaches the calendar. The grid (and with
+	// it the role=img summary) only exists while there is something to draw.
+	const streamsIn = async () => {
+		await expect(calendar).toBeVisible();
+		const label = await calendar.getAttribute("aria-label");
+		return Number(
+			label?.match(/calendar: ([\d,]+) streams/)?.[1]?.replace(/,/g, ""),
+		);
+	};
+	const emptyIn = async () => {
+		await expect(card.getByText("No streams in range.")).toBeVisible();
+		await expect(calendar).toHaveCount(0);
+	};
+	// One label element per month column (`mb-1` sits on nothing else in here).
+	const monthColumns = () => card.locator("div.mb-1");
+
+	const allTime = await streamsIn();
+	expect(allTime).toBeGreaterThan(0);
+	// The fixture spans two years, so the grid is many columns wide.
+	expect(await monthColumns().count()).toBeGreaterThan(1);
+
+	// A window the fixture does not reach leaves nothing to draw.
+	await page.getByLabel("Custom range start").fill("1999-01-01");
+	await page.getByLabel("Custom range end").fill("1999-01-31");
+	await emptyIn();
+
+	// The per-year split has to reconcile with the all-time total.
+	const years = await page
+		.locator("button")
+		.filter({ hasText: /^(19|20)\d\d$/ })
+		.allInnerTexts();
+	expect(years.length).toBeGreaterThan(1);
+	const perYear: number[] = [];
+	for (const year of years) {
+		await page.getByRole("button", { name: year, exact: true }).click();
+		perYear.push(await streamsIn());
+	}
+	expect(perYear.reduce((a, b) => a + b, 0)).toBe(allTime);
+
+	// A custom window that clips a month mid-way keeps the column but counts
+	// only the days inside it.
+	await page.getByLabel("Custom range start").fill("2026-09-01");
+	await page.getByLabel("Custom range end").fill("2026-09-05");
+	await expect(
+		card.getByText("Streams per day · 2026-09-01 → 2026-09-05"),
+	).toBeVisible();
+	expect(await monthColumns().count()).toBe(1);
+	const windowed = await streamsIn();
+	expect(windowed).toBeGreaterThan(0);
+	expect(windowed).toBeLessThan(allTime);
+});
+
 test("a playlist export in the same drop is routed to likes", async ({
 	page,
 }) => {
