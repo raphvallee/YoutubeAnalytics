@@ -115,6 +115,15 @@ test("import fixture, then music + video pages render data", async ({
 		page.getByRole("cell", { name: "Data Engineering Channel", exact: true }),
 	).toBeVisible();
 	await expect(page.getByText("Peak viewing hours")).toBeVisible();
+
+	// The fixture's "Deleted Video Showcase" row has no subtitles, so it is not
+	// a channel. It must not appear as one, and the leaderboard has to say how
+	// many views that covers instead of silently disagreeing with the stat tile.
+	const channels = page.getByRole("region", { name: "Top channels" });
+	await expect(channels.getByText("(unknown channel)")).toHaveCount(0);
+	await expect(
+		channels.getByText(/1 view in this range not ranked/),
+	).toBeVisible();
 });
 
 test("a playlist export in the same drop is routed to likes", async ({

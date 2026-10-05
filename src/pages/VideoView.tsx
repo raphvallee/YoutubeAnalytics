@@ -117,7 +117,10 @@ export default function VideoView() {
 				title="Top channels"
 				subtitle={<RangeLabel dataMin={meta.minTs} dataMax={meta.maxTs} />}
 			>
-				<ChannelLeaderboard channels={channels} />
+				<ChannelLeaderboard
+					channels={channels}
+					unattributed={summary.unattributed}
+				/>
 			</ChartCard>
 
 			<ChartCard
