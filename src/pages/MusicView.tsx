@@ -12,8 +12,8 @@ import { ArtistAffinityChart } from "@/components/charts/ArtistAffinityChart";
 import { StackedErasChart } from "@/components/charts/StackedErasChart";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { LoadingDataset } from "@/components/LoadingDataset";
-import { PageSkeleton } from "@/components/PageSkeleton";
 import { ReleaseLeaderboard } from "@/components/ReleaseLeaderboard";
+import { SkeletonText } from "@/components/SkeletonText";
 import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { TopTracksTable } from "@/components/TopTracksTable";
 import { formatDuration } from "@/lib/format";
@@ -136,30 +136,35 @@ export default function MusicView() {
 			</div>
 		);
 	}
-	// First paint after a navigation: no numbers yet, so show the shape of the
-	// page instead of blocking the thread on a synchronous pass over the rows.
-	if (dashboard.pending) return <PageSkeleton />;
-
+	// First paint after a navigation: no numbers yet. The page renders its real
+	// structure - toolbar, cards, borders, headings - and every value still in
+	// the worker stands in as a text-shaped skeleton (SkeletonText), so the
+	// layout never jumps when the real content lands.
 	const data = dashboard.data;
 	// A page-mount request always resolves, so a null here means the worker
 	// died between the render and the answer.
 	if (!data && dashboard.error) throw new Error(dashboard.error);
-	if (!data) return <PageSkeleton />;
+	const loading = dashboard.pending || !data;
+	const summary = data?.summary;
+	const likesByArtist =
+		likesMatch.data && likesMatch.data.total > 0
+			? likesMatch.data.byArtist
+			: undefined;
 
 	// No release-enrichment data source is wired up (there is no `mbReleases`
 	// table and no writer), so `topReleases` could only ever return []. Computing
 	// it meant a full 120k scan to guarantee an empty list; the card renders its
 	// empty state either way.
 	const releases = NO_RELEASES;
-	const summary = data.summary;
-	const likesByArtist =
-		likesMatch.data && likesMatch.data.total > 0
-			? likesMatch.data.byArtist
-			: undefined;
 
 	return (
-		<div className="space-y-6">
-			<TimeFilterToolbar years={data.years} />
+		<div className="space-y-6" aria-busy={loading || dashboard.refreshing}>
+			{loading && (
+				<div role="status" aria-live="polite" className="sr-only">
+					Crunching your history…
+				</div>
+			)}
+			<TimeFilterToolbar years={data?.years ?? []} />
 			<ComparePicker />
 
 			{dashboard.error && (
@@ -169,15 +174,23 @@ export default function MusicView() {
 			)}
 
 			<section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-				<Stat label="Music plays" value={summary.totalPlays.toLocaleString()} />
-				<Stat label="Artists" value={summary.uniqueArtists.toLocaleString()} />
+				<Stat
+					label="Music plays"
+					value={summary ? summary.totalPlays.toLocaleString() : null}
+				/>
+				<Stat
+					label="Artists"
+					value={summary ? summary.uniqueArtists.toLocaleString() : null}
+				/>
 				<Stat
 					label="Unique tracks"
-					value={summary.uniqueTracks.toLocaleString()}
+					value={summary ? summary.uniqueTracks.toLocaleString() : null}
 				/>
 				<Stat
 					label="Est. listening"
-					value={formatDuration(estSeconds(summary.totalPlays))}
+					value={
+						summary ? formatDuration(estSeconds(summary.totalPlays)) : null
+					}
 					hint="plays × 3.5 min"
 				/>
 			</section>
@@ -187,10 +200,11 @@ export default function MusicView() {
 				subtitle={<RangeLabelSpan min={meta.minTs} max={meta.maxTs} />}
 			>
 				<ArtistLeaderboard
-					artists={data.artists}
+					artists={data?.artists ?? []}
 					onSelect={selectArtist}
 					likesByArtist={likesByArtist}
 					deltas={compare.data?.deltas ?? undefined}
+					loading={loading}
 				/>
 			</ChartCard>
 
@@ -210,6 +224,7 @@ export default function MusicView() {
 			<ChartCard
 				title="Taste over time"
 				subtitle="Monthly plays, top 8 artists + Other"
+				loading={loading}
 				actions={
 					<fieldset
 						className="flex overflow-hidden rounded-md border text-xs"
@@ -232,26 +247,32 @@ export default function MusicView() {
 					</fieldset>
 				}
 			>
-				<StackedErasChart
-					rows={data.macro.rows}
-					seriesNames={data.macro.seriesNames}
-					expand={expand}
-				/>
+				{data && (
+					<StackedErasChart
+						rows={data.macro.rows}
+						seriesNames={data.macro.seriesNames}
+						expand={expand}
+					/>
+				)}
 			</ChartCard>
 
 			<ChartCard
 				title="Track eras"
 				subtitle="Monthly plays of the top 8 tracks in range"
+				loading={loading}
 			>
-				<StackedErasChart
-					rows={data.eras.rows}
-					seriesNames={data.eras.seriesNames}
-				/>
+				{data && (
+					<StackedErasChart
+						rows={data.eras.rows}
+						seriesNames={data.eras.seriesNames}
+					/>
+				)}
 			</ChartCard>
 
 			<ChartCard
 				title="Releases"
 				subtitle="'Release - Topic' uploads, ranked by plays"
+				loading={loading}
 			>
 				<ReleaseLeaderboard releases={releases} />
 			</ChartCard>
@@ -260,7 +281,7 @@ export default function MusicView() {
 				title="Top tracks"
 				subtitle={<RangeLabelSpan min={meta.minTs} max={meta.maxTs} />}
 			>
-				<TopTracksTable tracks={data.tracks} />
+				<TopTracksTable tracks={data?.tracks ?? []} loading={loading} />
 			</ChartCard>
 
 			<ArtistDrawer
@@ -271,9 +292,15 @@ export default function MusicView() {
 				{selected && (
 					<div className="space-y-6">
 						{artist.pending ? (
-							<p className="text-sm text-muted-foreground">
-								Crunching this artist…
-							</p>
+							<div role="status" aria-live="polite" className="space-y-2">
+								<span className="sr-only">Crunching this artist…</span>
+								<p className="text-sm text-muted-foreground">
+									<SkeletonText width="70%" />
+								</p>
+								<p className="text-sm text-muted-foreground">
+									<SkeletonText width="45%" />
+								</p>
+							</div>
 						) : artist.data ? (
 							<>
 								<p className="text-sm text-muted-foreground">
@@ -338,13 +365,16 @@ function Stat({
 	hint,
 }: {
 	label: string;
-	value: string;
+	/** Null while the worker is still computing: renders a skeleton in place. */
+	value: string | null;
 	hint?: string;
 }) {
 	return (
 		<div className="rounded-lg border p-3">
 			<p className="text-xs text-muted-foreground">{label}</p>
-			<p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+			<p className="mt-1 text-xl font-semibold tabular-nums">
+				{value === null ? <SkeletonText width="5ch" /> : value}
+			</p>
 			{hint && <p className="text-xs text-muted-foreground">{hint}</p>}
 		</div>
 	);

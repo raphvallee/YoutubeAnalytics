@@ -9,7 +9,7 @@ Local-first analytics web app for Google Takeout YouTube / YouTube Music exports
 ### Workflow rules
 
 - **Always use the `milestone-completion` skill** when implementing or verifying blueprint phases; check off items in `docs/BLUEPRINT.md` §5 as they are completed, with evidence.
-- Package manager is **Bun**, never npm/yarn/pnpm.
+- **Bun is the only package manager and runner - NEVER use npm for anything.** No `npm install`, no `npm run`, no `npx` - always `bun install`, `bun run`, `bunx`. Never npm/yarn/pnpm.
 - Hosting is GitHub Pages (project site at `https://raphvallee.github.io/YoutubeAnalytics/`), deployed via `.github/workflows/deploy.yml`.
 - Pull requests are gated by `.github/workflows/ci.yml` (two jobs: check/typecheck/test/build, then the Playwright smoke against that build). Add new gates there, not only in `deploy.yml`.
 

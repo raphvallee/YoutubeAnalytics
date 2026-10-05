@@ -48,7 +48,6 @@ let nextId = 1;
  * adopted.
  */
 let generation = 0;
-let inFlight = 0;
 
 const cache = new Map<string, unknown>();
 const waiters = new Map<number, Waiter>();
@@ -62,7 +61,6 @@ const waiters = new Map<number, Waiter>();
  */
 const inflight = new Map<string, Promise<unknown>>();
 const generationListeners = new Set<() => void>();
-const pendingListeners = new Set<() => void>();
 
 /** Notifies components that ask again when the underlying rows change. */
 export function subscribeAnalyticsGeneration(listener: () => void): () => void {
@@ -72,21 +70,8 @@ export function subscribeAnalyticsGeneration(listener: () => void): () => void {
 	};
 }
 
-/** Notifies the progress bar. */
-export function subscribeAnalyticsPending(listener: () => void): () => void {
-	pendingListeners.add(listener);
-	return () => {
-		pendingListeners.delete(listener);
-	};
-}
-
 export function analyticsGeneration(): number {
 	return generation;
-}
-
-/** Requests the worker is currently working on. */
-export function pendingAnalytics(): number {
-	return inFlight;
 }
 
 /** Insert with bounded, insertion-ordered eviction. */
@@ -106,9 +91,7 @@ function kill(reason: Error): void {
 	for (const waiter of waiters.values()) waiter.reject(reason);
 	waiters.clear();
 	inflight.clear();
-	inFlight = 0;
 	cache.clear();
-	for (const listener of pendingListeners) listener();
 }
 
 function ensureWorker(): Worker {
@@ -125,8 +108,6 @@ function ensureWorker(): Worker {
 		if (!waiter) return;
 		waiters.delete(message.id);
 		inflight.delete(waiter.key);
-		inFlight -= 1;
-		for (const listener of pendingListeners) listener();
 		if (message.type === "error") {
 			waiter.reject(new Error(message.message));
 			return;
@@ -188,8 +169,6 @@ export function runAnalytics<K extends AnalyticsRequest["name"]>(
 		});
 	});
 	inflight.set(key, promise);
-	inFlight += 1;
-	for (const listener of pendingListeners) listener();
 	target.postMessage({
 		type: "query",
 		id,

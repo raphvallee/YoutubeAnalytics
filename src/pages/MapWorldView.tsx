@@ -8,7 +8,11 @@ import {
 	WorldMap,
 } from "@/components/charts/WorldMap";
 import { LoadingDataset } from "@/components/LoadingDataset";
-import { PageSkeleton } from "@/components/PageSkeleton";
+import {
+	SKELETON_ROW_WIDTHS,
+	SkeletonBar,
+	SkeletonText,
+} from "@/components/SkeletonText";
 import type { ArtistOrigin } from "@/db/types";
 import { isoNumeric } from "@/lib/iso";
 import { SERIES_COLORS } from "@/lib/palette";
@@ -52,7 +56,7 @@ export default function MapWorldView() {
 	// Null until the worker's first answer lands. The memos below still have to
 	// run (hooks are unconditional), so they read through it: an artist with no
 	// ranking yet counts as 0 plays - the same answer the empty origins table
-	// gives - and the page stays behind a skeleton until it resolves.
+	// gives - and the ranking-derived pieces render as skeletons until it does.
 	const artistPlays = plays.data;
 
 	const points = useMemo<MapPoint[]>(() => {
@@ -135,22 +139,30 @@ export default function MapWorldView() {
 			</div>
 		);
 	}
-	// The map's own SVG is cheap, but the ranking behind it is a full pass, so
-	// hold the page until that has landed rather than freezing to draw it.
+	// The map's own SVG is cheap, but the ranking behind it is a full pass. The
+	// page renders its real structure meanwhile; the ranking-derived text and
+	// map body stand in as skeletons until it lands (see SkeletonText).
 	if (plays.error && artistPlays === null) throw new Error(plays.error);
-	if (artistPlays === null)
-		return <PageSkeleton label="Ranking your artists" />;
-
+	const loading = artistPlays === null;
 	const placed = cache.filter((c) => c.precision !== "miss").length;
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6" aria-busy={loading || running}>
+			{loading && (
+				<div role="status" aria-live="polite" className="sr-only">
+					Ranking your artists…
+				</div>
+			)}
 			<div className="flex flex-wrap items-baseline justify-between gap-2">
 				<h1 className="text-lg font-semibold">World map</h1>
 				<p className="text-sm text-muted-foreground" aria-live="polite">
-					{running
-						? `Resolving origins… ${progress.done}/${progress.total} artists (controls on the Import page)`
-						: `${placed.toLocaleString()}/${cache.length.toLocaleString()} artists placed`}
+					{loading ? (
+						<SkeletonText width="24ch" />
+					) : running ? (
+						`Resolving origins… ${progress.done}/${progress.total} artists (controls on the Import page)`
+					) : (
+						`${placed.toLocaleString()}/${cache.length.toLocaleString()} artists placed`
+					)}
 				</p>
 			</div>
 
@@ -158,9 +170,12 @@ export default function MapWorldView() {
 				title="Where your artists come from"
 				subtitle="All-time · artist birth / foundation place, city precision preferred"
 				height={480}
+				loading={loading}
 				actions={<ModeSwitch mode={mode} onMode={setMode} />}
 			>
-				<WorldMap points={points} shadedIds={shadedIds} mode={mode} />
+				{!loading && (
+					<WorldMap points={points} shadedIds={shadedIds} mode={mode} />
+				)}
 			</ChartCard>
 
 			<ChartCard
@@ -168,7 +183,11 @@ export default function MapWorldView() {
 				subtitle="Ranked by all-time plays; unresolved artists listed last"
 				height={Math.max(240, Math.min(560, cache.length * 28 + 40))}
 			>
-				<OriginTable cache={cache} artistPlays={artistPlays} />
+				<OriginTable
+					cache={cache}
+					artistPlays={loading ? null : artistPlays}
+					loading={loading}
+				/>
 			</ChartCard>
 		</div>
 	);
@@ -221,16 +240,19 @@ function ModeSwitch({
 function OriginTable({
 	cache,
 	artistPlays,
+	loading = false,
 }: {
 	cache: ArtistOrigin[];
-	artistPlays: Map<string, { artist: string; plays: number }>;
+	/** Null while the ranking pass is still running. */
+	artistPlays: Map<string, { artist: string; plays: number }> | null;
+	loading?: boolean;
 }) {
 	const rows = useMemo(
 		() =>
 			[...cache]
 				.map((o) => ({
 					...o,
-					plays: artistPlays.get(o.artistKey)?.plays ?? 0,
+					plays: artistPlays?.get(o.artistKey)?.plays ?? 0,
 				}))
 				.sort(
 					(a, b) =>
@@ -241,6 +263,45 @@ function OriginTable({
 				),
 		[cache, artistPlays],
 	);
+
+	if (loading) {
+		return (
+			<div className="h-full overflow-y-auto" aria-hidden="true">
+				<table className="w-full text-sm">
+					<thead className="sticky top-0 bg-background text-left text-xs text-muted-foreground">
+						<tr>
+							<th className="px-2 py-1.5 font-medium">#</th>
+							<th className="px-2 py-1.5 font-medium">Artist</th>
+							<th className="px-2 py-1.5 font-medium">Origin</th>
+							<th className="px-2 py-1.5 font-medium">Country</th>
+							<th className="px-2 py-1.5 text-right font-medium">Plays</th>
+						</tr>
+					</thead>
+					<tbody>
+						{SKELETON_ROW_WIDTHS.map((w) => (
+							<tr key={w} className="border-t border-border/60">
+								<td className="px-2 py-1.5">
+									<SkeletonBar width="2ch" height="1rem" />
+								</td>
+								<td className="px-2 py-1.5">
+									<SkeletonBar width={w} height="1rem" />
+								</td>
+								<td className="px-2 py-1.5">
+									<SkeletonBar width="45%" height="1rem" />
+								</td>
+								<td className="px-2 py-1.5">
+									<SkeletonBar width="7ch" height="1rem" />
+								</td>
+								<td className="px-2 py-1.5 text-right">
+									<SkeletonBar width="6ch" height="1rem" />
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		);
+	}
 
 	if (rows.length === 0) {
 		return (
