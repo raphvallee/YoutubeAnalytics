@@ -312,8 +312,10 @@ const video = () => {
 	);
 	time(
 		"buildCalendar (heatmap)",
+		// The baseline ignores the range (whole dataset by design); the current
+		// build takes it, and VideoView now passes the active window.
 		() => baseHeat.buildCalendar(records),
-		() => curHeat.buildCalendar(records),
+		() => curHeat.buildCalendar(records, range),
 	);
 };
 

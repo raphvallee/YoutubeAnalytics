@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { StreamRecord } from "@/db/types";
 import { buildCalendar, dayCounts, dayStart, levelThresholds } from "./heatmap";
 
+/** Wide open window - what the "all time" preset resolves to. */
+const ALL = { from: Number.NEGATIVE_INFINITY, to: Number.POSITIVE_INFINITY };
+
 function rec(ts: number, kind: "music" | "youtube" = "youtube"): StreamRecord {
 	return {
 		id: `${ts}-${kind}`,
@@ -22,12 +25,10 @@ function rec(ts: number, kind: "music" | "youtube" = "youtube"): StreamRecord {
 describe("dayCounts", () => {
 	it("buckets rows onto local midnight, organic only by default", () => {
 		const noon = new Date(2024, 2, 3, 12, 30).getTime();
-		const counts = dayCounts([
-			rec(noon),
-			rec(noon + 60_000),
-			rec(noon, "music"),
-			rec(noon, "youtube"),
-		]);
+		const counts = dayCounts(
+			[rec(noon), rec(noon + 60_000), rec(noon, "music"), rec(noon, "youtube")],
+			ALL,
+		);
 		counts.forEach((c) => {
 			expect(c).toBe(4);
 			expect(new Date([...counts.keys()][0] ?? 0).getHours()).toBe(0);
@@ -38,8 +39,35 @@ describe("dayCounts", () => {
 		const ad = (ts: number): StreamRecord => ({ ...rec(ts), adDriven: true });
 		const noon = new Date(2024, 2, 3, 12).getTime();
 		const rows = [rec(noon), ad(noon), ad(noon + 3_600_000)];
-		expect([...dayCounts(rows).values()]).toEqual([1]);
-		expect([...dayCounts(rows, { includeAds: true }).values()]).toEqual([3]);
+		expect([...dayCounts(rows, ALL).values()]).toEqual([1]);
+		expect([...dayCounts(rows, ALL, { includeAds: true }).values()]).toEqual([
+			3,
+		]);
+	});
+
+	it("drops rows outside the range", () => {
+		const jan = new Date(2024, 0, 10, 12).getTime();
+		const mar = new Date(2024, 2, 10, 12).getTime();
+		const rows = [rec(jan), rec(mar), rec(mar + 3_600_000)];
+		// February-only window: neither January nor March counts.
+		const feb = {
+			from: new Date(2024, 1, 1).getTime(),
+			to: new Date(2024, 1, 29, 23, 59, 59, 999).getTime(),
+		};
+		expect(dayCounts(rows, feb).size).toBe(0);
+
+		const janWindow = {
+			from: new Date(2024, 0, 1).getTime(),
+			to: new Date(2024, 0, 31, 23, 59, 59, 999).getTime(),
+		};
+		const janCounts = dayCounts(rows, janWindow);
+		expect(janCounts.size).toBe(1);
+		expect([...janCounts.values()]).toEqual([1]);
+
+		// Inclusive bounds: the exact endpoints are inside the window.
+		const oneDay = { from: mar, to: mar };
+		expect([...dayCounts(rows, oneDay).values()]).toEqual([1]);
+		expect(dayCounts(rows, { from: mar + 1, to: mar + 1 }).size).toBe(0);
 	});
 
 	it("keeps 23h/25h DST days on one local day", () => {
@@ -77,10 +105,12 @@ describe("dayCounts", () => {
 				rows.push(rec(ts));
 			}
 			expect(starts.size).toBe(1);
-			expect(dayCounts(rows).size).toBe(1);
+			expect(dayCounts(rows, ALL).size).toBe(1);
 			// The month grid keys must still line up with the dayCounts keys.
 			const grid = new Set(
-				buildCalendar(rows).months.flatMap((mm) => mm.days.map((dd) => dd.day)),
+				buildCalendar(rows, ALL).months.flatMap((mm) =>
+					mm.days.map((dd) => dd.day),
+				),
 			);
 			expect(grid.has([...starts][0] ?? 0)).toBe(true);
 		}
@@ -93,7 +123,7 @@ describe("dayCounts", () => {
 			rec(new Date(2024, 2, 10, 23, 30).getTime()),
 			rec(new Date(2024, 2, 11, 0, 30).getTime()),
 		];
-		const counts = dayCounts(rows);
+		const counts = dayCounts(rows, ALL);
 		expect(counts.size).toBe(3);
 		expect([...counts.values()].sort((a, b) => b - a)).toEqual([2, 1, 1]);
 	});
@@ -126,14 +156,17 @@ describe("buildCalendar", () => {
 		// Two days in different months, plus a heavy day for level spread.
 		const d1 = new Date(2024, 0, 15).getTime(); // Jan 2024
 		const d2 = new Date(2024, 1, 3).getTime(); // Feb 2024
-		const calendar = buildCalendar([
-			rec(d1),
-			rec(d1),
-			rec(d2, "music"),
-			...Array.from({ length: 10 }, (_, i) =>
-				rec(new Date(2024, 1, 4, i).getTime()),
-			),
-		]);
+		const calendar = buildCalendar(
+			[
+				rec(d1),
+				rec(d1),
+				rec(d2, "music"),
+				...Array.from({ length: 10 }, (_, i) =>
+					rec(new Date(2024, 1, 4, i).getTime()),
+				),
+			],
+			ALL,
+		);
 		expect(calendar.months.map((m) => m.key)).toEqual(["2024-01", "2024-02"]);
 		const jan = calendar.months[0];
 		const feb = calendar.months[1];
@@ -151,10 +184,67 @@ describe("buildCalendar", () => {
 		expect(calendar.max).toBe(10);
 		expect(calendar.total).toBe(13);
 		expect(calendar.activeDays).toBe(3);
+		// A whole-window range leaves no cell flagged out of range.
+		expect(calendar.months.flatMap((m) => m.days).every((c) => c.inRange)).toBe(
+			true,
+		);
+	});
+
+	it("only covers the range, and flags cells outside it", () => {
+		// One play in January and one in March 2024; a February-only window has
+		// no data at all.
+		const rows = [
+			rec(new Date(2024, 0, 15, 12).getTime()),
+			rec(new Date(2024, 2, 20, 12).getTime()),
+		];
+		const feb = {
+			from: new Date(2024, 1, 1).getTime(),
+			to: new Date(2024, 1, 29, 23, 59, 59, 999).getTime(),
+		};
+		expect(buildCalendar(rows, feb)).toEqual({
+			months: [],
+			total: 0,
+			activeDays: 0,
+			max: 0,
+		});
+
+		// A January-only window drops the March column entirely.
+		const jan = {
+			from: new Date(2024, 0, 1).getTime(),
+			to: new Date(2024, 0, 31, 23, 59, 59, 999).getTime(),
+		};
+		const janOnly = buildCalendar(rows, jan);
+		expect(janOnly.months.map((m) => m.key)).toEqual(["2024-01"]);
+		expect(janOnly.total).toBe(1);
+		expect(janOnly.activeDays).toBe(1);
+		const janCells = janOnly.months.flatMap((m) => m.days);
+		expect(janCells.every((c) => c.inRange)).toBe(true);
+
+		// A window that clips mid-month keeps the month column but marks the
+		// days outside the range, so they cannot read as zero-play days.
+		const partial = {
+			from: new Date(2024, 0, 10).getTime(),
+			to: new Date(2024, 0, 20, 23, 59, 59, 999).getTime(),
+		};
+		const clipped = buildCalendar(rows, partial);
+		expect(clipped.months.map((m) => m.key)).toEqual(["2024-01"]);
+		// The grid is dense 1..dim, so day N of the month sits at index N - 1.
+		const cells = clipped.months[0]?.days ?? [];
+		expect(cells[8]?.inRange).toBe(false); // Jan 9
+		expect(cells[9]?.inRange).toBe(true); // Jan 10
+		expect(cells[14]?.count).toBe(1); // Jan 15
+		expect(cells[14]?.inRange).toBe(true);
+		expect(cells[19]?.inRange).toBe(true); // Jan 20
+		expect(cells[20]?.inRange).toBe(false); // Jan 21
+		// The excluded days are placeholders, not zero-play days.
+		expect(cells.filter((c) => !c.inRange).every((c) => c.count === 0)).toBe(
+			true,
+		);
+		expect(clipped.total).toBe(1);
 	});
 
 	it("returns an empty calendar without records", () => {
-		expect(buildCalendar([])).toEqual({
+		expect(buildCalendar([], ALL)).toEqual({
 			months: [],
 			total: 0,
 			activeDays: 0,

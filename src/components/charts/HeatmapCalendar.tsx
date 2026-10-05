@@ -8,6 +8,9 @@ import type { StreamRecord } from "@/db/types";
  * Sequential blue ramp (dataviz reference), bright = more; ordinal steps
  * validated on the dark surface (2.15:1 light end). Levels are quartiles of
  * the active days, so the ramp stays meaningful at any dataset scale.
+ *
+ * Range-scoped, like every other chart on the page: the caller passes the
+ * active window and cells outside it render blank instead of as "no plays".
  */
 
 // Steps 600 / 500 / 350 / 250 of the reference blue ramp (dark surface).
@@ -30,13 +33,28 @@ const PAD_KEYS = ["p0", "p1", "p2", "p3", "p4", "p5"] as const;
 
 export const HeatmapCalendar = memo(function HeatmapCalendar({
 	records,
+	from,
+	to,
 }: {
 	records: StreamRecord[];
+	from: number;
+	to: number;
 }) {
-	const calendar = useMemo(() => buildCalendar(records), [records]);
+	// Keyed on the two primitives rather than a range object, which would be a
+	// fresh identity on every render.
+	const calendar = useMemo(
+		() => buildCalendar(records, { from, to }),
+		[records, from, to],
+	);
 	const cellsByDay = useMemo(
 		() =>
-			new Map(calendar.months.flatMap((m) => m.days).map((c) => [c.day, c])),
+			new Map(
+				calendar.months
+					.flatMap((m) => m.days)
+					// Out-of-range cells are not hoverable: there is no count behind them.
+					.filter((c) => c.inRange)
+					.map((c) => [c.day, c]),
+			),
 		[calendar],
 	);
 	const [hover, setHover] = useState<HeatCell | null>(null);
@@ -95,12 +113,15 @@ export const HeatmapCalendar = memo(function HeatmapCalendar({
 								{month.days.map((cell) => (
 									<div
 										key={cell.day}
-										data-day={cell.day}
+										// Blank + hoverless outside the range: the cell is padding
+										// to keep the Mon-first grid aligned, not a day with no plays.
+										data-day={cell.inRange ? cell.day : undefined}
 										style={{
 											width: CELL,
 											height: CELL,
-											background:
-												cell.level === 0
+											background: !cell.inRange
+												? "transparent"
+												: cell.level === 0
 													? EMPTY_COLOR
 													: LEVEL_COLORS[cell.level - 1],
 										}}
