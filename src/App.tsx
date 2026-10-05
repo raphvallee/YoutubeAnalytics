@@ -51,9 +51,12 @@ export default function App() {
 
 	return (
 		<div className="flex min-h-screen">
+			{/* h-screen + sticky keeps the sidebar one viewport tall even when
+			    main scrolls long, so mt-auto pins the repo link to the visible
+			    bottom instead of the bottom of the whole page. */}
 			<nav
 				aria-label="Main navigation"
-				className="flex w-48 shrink-0 flex-col gap-1 border-r p-4"
+				className="sticky top-0 flex h-screen w-48 shrink-0 flex-col gap-1 overflow-y-auto border-r p-4"
 			>
 				<span className="mb-4 text-sm font-semibold tracking-tight">
 					YT Analytics

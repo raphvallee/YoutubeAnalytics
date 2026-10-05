@@ -136,6 +136,28 @@ test("empty state shows the import pointer", async ({ page }) => {
 	await expect(page.getByText(/No data imported yet/)).toBeVisible();
 });
 
+test("the repo link stays in view on a page taller than the viewport", async ({
+	page,
+}) => {
+	await page.goto("/YoutubeAnalytics/import");
+	await importFiles(page, FIXTURE);
+	await expect(page.getByText("Imported dataset")).toBeVisible({
+		timeout: 15_000,
+	});
+
+	await page.goto("/YoutubeAnalytics/music");
+	await expect(
+		page.getByRole("heading", { name: "Favorite artists" }),
+	).toBeVisible();
+
+	// Regression: the sidebar is mt-auto-pinned to the bottom, so it used to
+	// be pushed off-screen once main grew past the viewport.
+	const repoLink = page.getByRole("link", {
+		name: "View this project on GitHub",
+	});
+	await expect(repoLink).toBeInViewport();
+});
+
 test("world map renders with origins lookups disabled", async ({ page }) => {
 	// Keep the smoke hermetic: never hit MusicBrainz/Open-Meteo from CI.
 	await page.addInitScript(() => {
