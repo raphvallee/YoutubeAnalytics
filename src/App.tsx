@@ -50,7 +50,10 @@ export default function App() {
 	}, [status, recordCount, startOrigins]);
 
 	return (
-		<div className="flex min-h-screen">
+		// overflow-x-clip is a backstop: no page-level sideways scroll, ever.
+		// `clip` rather than `hidden` on purpose - `hidden` would turn this into
+		// a scroll container in both axes and break the sidebar's `sticky`.
+		<div className="flex min-h-screen overflow-x-clip">
 			{/* h-screen + sticky keeps the sidebar one viewport tall even when
 			    main scrolls long, so mt-auto pins the repo link to the visible
 			    bottom instead of the bottom of the whole page. */}
@@ -85,7 +88,18 @@ export default function App() {
 					GitHub
 				</a>
 			</nav>
-			<main className="flex-1 p-6">
+			{/* min-w-0 is load-bearing. `main` is a flex item, so its default
+			    min-width:auto resolves to its min-content width instead of the
+			    width it was allotted. The calendar heatmap's month columns are
+			    `shrink-0` inside an `overflow-x-auto` box, and in block layout
+			    such a box still reports its content's min-content width (~5.5k px
+			    for a multi-year dataset) upward - `overflow-x: auto` only zeroes
+			    the automatic minimum size of flex/grid items. So the calendar
+			    dictated how wide `main` got, the charts filled it, and the page
+			    scrolled sideways for thousands of pixels. min-w-0 lets `main`
+			    shrink to its share of the viewport, which hands the excess width
+			    to the calendar's own scroll box. */}
+			<main className="min-w-0 flex-1 p-6">
 				<ErrorBoundary>
 					<Routes>
 						<Route path="/" element={<Navigate to="/music" replace />} />
