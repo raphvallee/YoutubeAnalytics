@@ -479,6 +479,8 @@ The pain that prompted it: exports taken months apart all contain a file named `
 
 ### Phase 10 - Instant navigation (implemented 2026-10-05, requested directly by the user)
 
+**Post-merge verification:** 243 unit tests and 16 browser tests pass with the latest main changes. The original zero-long-task smoke assertion was replaced after CI recorded a 67ms render task: shared-runner chart rendering cannot reliably meet an absolute 50ms budget. The replacement holds real analytics-worker replies until explicitly released and proves Music → Videos → Import navigation remains usable while computations are pending, then verifies all pages render after release. This supersedes the timing-test claim below, not the worker/loading implementation.
+
 The report: every action should be instant, and navigation in particular - it should change automatically and show loading rather than block the thread.
 
 What was actually wrong. Per-query costs were fine; the page-level sum was not, and it all ran inside a React render. Measured at 120k rows on the previous commit, `MusicView`'s mount memo set was ~205ms and `VideoView`'s ~105ms of straight-line main-thread work. Clicking a sidebar link therefore froze the tab for the length of a whole page mount with no feedback at all - the click registered, then nothing, then a page appeared. Two more costs sat behind it: `structuredClone` of the dataset for a worker hand-off measured ~152ms, and selecting a snapshot deserialized a second full copy of the rows onto the UI thread.

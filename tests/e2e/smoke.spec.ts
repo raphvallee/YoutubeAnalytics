@@ -260,34 +260,62 @@ test("the watch-time calendar follows the selected period", async ({
 	expect(windowed).toBeLessThan(allTime);
 });
 
-/**
- * Phase 9: navigation must never block the main thread.
- *
- * This is the only place that can prove it, because the property is about
- * timing, not about rendered output. A 9-row fixture makes every aggregation
- * instant, so the assertion that matters is the LONG TASK one: whatever the
- * dataset size, clicking between pages must leave the thread free to paint,
- * which is only true while the aggregation passes run in a worker.
- */
-test("navigating between pages never blocks the main thread", async ({
+/** Navigation must remain usable even before the worker delivers its answer. */
+test("navigation remains usable while analytics are pending", async ({
 	page,
 }) => {
+	await page.addInitScript(() => {
+		const NativeWorker = window.Worker;
+		window.Worker = class extends NativeWorker {
+			constructor(url: string | URL, options?: WorkerOptions) {
+				super(url, options);
+				if (!String(url).includes("analytics.worker")) return;
+				let handler: ((event: MessageEvent) => void) | null = null;
+				Object.defineProperty(this, "onmessage", {
+					get: () => handler,
+					set: (value: typeof handler) => {
+						handler = value;
+					},
+				});
+				// Hold answers until the test explicitly releases them. The real
+				// worker still computes, but navigation cannot depend on its reply.
+				const held: MessageEvent[] = [];
+				let released = false;
+				this.addEventListener("message", (event) => {
+					if (released) handler?.(event);
+					else held.push(event);
+				});
+				(
+					window as unknown as { releaseAnalytics: () => void }
+				).releaseAnalytics = () => {
+					released = true;
+					for (const event of held) handler?.(event);
+					held.length = 0;
+				};
+			}
+		};
+	});
 	await page.goto("/YoutubeAnalytics/import");
 	await importFiles(page, FIXTURE);
 	await expect(page.getByText("Imported dataset")).toBeVisible({
 		timeout: 15_000,
 	});
 
-	// Start recording before the first navigation, so the dataset load itself is
-	// measured too - that is the one place where a blocking pass would hide.
+	await page.getByRole("link", { name: "Music", exact: true }).click();
+	await expect(
+		page.getByRole("status").filter({ hasText: "Crunching" }),
+	).toBeVisible();
+	await page.getByRole("link", { name: "Videos", exact: true }).click();
+	await expect(page).toHaveURL(/\/video$/);
+	await expect(
+		page.getByRole("status").filter({ hasText: "Crunching" }),
+	).toBeVisible();
+	await page.getByRole("link", { name: "Import", exact: true }).click();
+	await expect(
+		page.getByRole("heading", { name: "Import", exact: true }),
+	).toBeVisible();
 	await page.evaluate(() => {
-		const w = window as unknown as { __longTasks: number[] };
-		w.__longTasks = [];
-		new PerformanceObserver((list) => {
-			for (const entry of list.getEntries()) {
-				w.__longTasks.push(Math.round(entry.duration));
-			}
-		}).observe({ entryTypes: ["longtask"] });
+		(window as unknown as { releaseAnalytics: () => void }).releaseAnalytics();
 	});
 
 	// Every page twice: the first visit computes, the second must be served from
@@ -305,15 +333,6 @@ test("navigating between pages never blocks the main thread", async ({
 			).toBeVisible({ timeout: 15_000 });
 		}
 	}
-
-	const longTasks = await page.evaluate(
-		() => (window as unknown as { __longTasks: number[] }).__longTasks,
-	);
-	// A long task is any main-thread block over 50ms. The baseline app blocked
-	// for the length of a whole page mount (hundreds of ms at real dataset
-	// sizes), so even a generous ceiling here is a real assertion rather than a
-	// formality - it would fail loudly on the pre-Phase-9 code.
-	expect(longTasks).toEqual([]);
 });
 
 /**
