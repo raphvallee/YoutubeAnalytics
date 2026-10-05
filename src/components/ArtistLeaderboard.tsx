@@ -1,17 +1,22 @@
 import { memo } from "react";
 import type { ArtistDelta } from "@/analytics/compare";
 import { type ArtistAgg, estSeconds } from "@/analytics/queries";
+import { SKELETON_ROW_WIDTHS, SkeletonBar } from "@/components/SkeletonText";
 import { formatDuration } from "@/lib/format";
 
 /**
  * Ranked favorite artists. Row click opens the artist profile drawer.
  * Text stays in ink tokens; a muted share bar carries magnitude.
+ *
+ * While `loading`, the real table header renders and only the rows stand in
+ * as skeletons, so the card's size and borders never change.
  */
 export const ArtistLeaderboard = memo(function ArtistLeaderboard({
 	artists,
 	onSelect,
 	likesByArtist,
 	deltas,
+	loading = false,
 }: {
 	artists: ArtistAgg[];
 	onSelect: (artistKey: string, artist: string) => void;
@@ -19,8 +24,46 @@ export const ArtistLeaderboard = memo(function ArtistLeaderboard({
 	likesByArtist?: Map<string, number>;
 	/** Optional snapshot deltas (Phase 6 compare); column hidden when absent. */
 	deltas?: Map<string, ArtistDelta>;
+	loading?: boolean;
 }) {
 	const max = artists[0]?.plays ?? 0;
+
+	if (loading) {
+		return (
+			<div className="max-h-full overflow-auto" aria-hidden="true">
+				<table className="w-full text-sm">
+					<ArtistHead />
+					<tbody>
+						{SKELETON_ROW_WIDTHS.map((w) => (
+							<tr key={w} className="border-b border-border/50 last:border-0">
+								<td className="py-2 pr-2">
+									<SkeletonBar width="2ch" height="1rem" />
+								</td>
+								<td className="py-2 pr-2">
+									<SkeletonBar width={w} height="1rem" />
+								</td>
+								<td className="py-2 pr-2 text-right">
+									<SkeletonBar width="6ch" height="1rem" />
+								</td>
+								<td className="py-2 pr-2 text-right">
+									<SkeletonBar width="5ch" height="1rem" />
+								</td>
+								<td className="py-2 pr-2 text-right">
+									<SkeletonBar width="4ch" height="1rem" />
+								</td>
+								<td className="hidden p-2 sm:table-cell">
+									<div
+										className="h-1.5 animate-pulse rounded-full bg-primary/30"
+										style={{ width: w }}
+									/>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		);
+	}
 
 	if (artists.length === 0) {
 		return (
@@ -33,33 +76,7 @@ export const ArtistLeaderboard = memo(function ArtistLeaderboard({
 	return (
 		<div className="max-h-full overflow-auto">
 			<table className="w-full text-sm">
-				<thead className="sticky top-0 z-10 bg-background">
-					<tr className="border-b text-left text-xs text-muted-foreground">
-						<th scope="col" className="py-2 pr-2 font-medium">
-							#
-						</th>
-						<th scope="col" className="py-2 pr-2 font-medium">
-							Artist
-						</th>
-						<th scope="col" className="py-2 pr-2 text-right font-medium">
-							Plays
-						</th>
-						{deltas && (
-							<th scope="col" className="py-2 pr-2 text-right font-medium">
-								vs snap
-							</th>
-						)}
-						<th scope="col" className="py-2 pr-2 text-right font-medium">
-							Est. time
-						</th>
-						<th scope="col" className="py-2 pr-2 text-right font-medium">
-							Likes
-						</th>
-						<th scope="col" className="hidden p-2 font-medium sm:table-cell">
-							Share
-						</th>
-					</tr>
-				</thead>
+				<ArtistHead deltas={deltas} />
 				<tbody>
 					{artists.map((a, i) => {
 						const delta = deltas?.get(a.artistKey);
@@ -107,6 +124,39 @@ export const ArtistLeaderboard = memo(function ArtistLeaderboard({
 		</div>
 	);
 });
+
+/** Column headers, shared by the loading rows and the real rows. */
+function ArtistHead({ deltas }: { deltas?: Map<string, ArtistDelta> }) {
+	return (
+		<thead className="sticky top-0 z-10 bg-background">
+			<tr className="border-b text-left text-xs text-muted-foreground">
+				<th scope="col" className="py-2 pr-2 font-medium">
+					#
+				</th>
+				<th scope="col" className="py-2 pr-2 font-medium">
+					Artist
+				</th>
+				<th scope="col" className="py-2 pr-2 text-right font-medium">
+					Plays
+				</th>
+				{deltas && (
+					<th scope="col" className="py-2 pr-2 text-right font-medium">
+						vs snap
+					</th>
+				)}
+				<th scope="col" className="py-2 pr-2 text-right font-medium">
+					Est. time
+				</th>
+				<th scope="col" className="py-2 pr-2 text-right font-medium">
+					Likes
+				</th>
+				<th scope="col" className="hidden p-2 font-medium sm:table-cell">
+					Share
+				</th>
+			</tr>
+		</thead>
+	);
+}
 
 /** Snapshot delta: arrow glyph carries the direction, color is a cue. */
 function DeltaCell({ delta }: { delta: ArtistDelta | undefined }) {

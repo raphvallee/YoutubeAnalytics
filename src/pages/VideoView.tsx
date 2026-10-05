@@ -8,7 +8,7 @@ import { BarsChart } from "@/components/charts/BarsChart";
 import { HeatmapCalendar } from "@/components/charts/HeatmapCalendar";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { LoadingDataset } from "@/components/LoadingDataset";
-import { PageSkeleton } from "@/components/PageSkeleton";
+import { SkeletonText } from "@/components/SkeletonText";
 import { RangeLabel, TimeFilterToolbar } from "@/components/TimeFilterToolbar";
 import { SERIES_COLORS } from "@/lib/palette";
 import { useDatasetStore } from "@/state/dataset";
@@ -87,19 +87,26 @@ export default function VideoView() {
 			</div>
 		);
 	}
-	if (dashboard.pending) return <PageSkeleton />;
-
+	// First paint after a navigation: no numbers yet. The page renders its real
+	// structure - toolbar, cards, borders, headings - and every value still in
+	// the worker stands in as a text-shaped skeleton (SkeletonText), so the
+	// layout never jumps when the real content lands.
 	const data = dashboard.data;
 	if (!data && dashboard.error) throw new Error(dashboard.error);
-	if (!data) return <PageSkeleton />;
+	const loading = dashboard.pending || !data;
 
 	return (
 		<div
 			className="space-y-6"
 			data-analytics-view="video"
-			aria-busy={dashboard.refreshing}
+			aria-busy={loading || dashboard.refreshing}
 		>
-			<TimeFilterToolbar years={data.years} />
+			{loading && (
+				<div role="status" aria-live="polite" className="sr-only">
+					Crunching your history…
+				</div>
+			)}
+			<TimeFilterToolbar years={data?.years ?? []} />
 
 			{dashboard.error && (
 				<p role="alert" className="text-sm text-destructive">
@@ -110,11 +117,11 @@ export default function VideoView() {
 			<section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
 				<Stat
 					label="Videos watched"
-					value={data.summary.totalPlays.toLocaleString()}
+					value={data ? data.summary.totalPlays.toLocaleString() : null}
 				/>
 				<Stat
 					label="Channels"
-					value={data.summary.uniqueChannels.toLocaleString()}
+					value={data ? data.summary.uniqueChannels.toLocaleString() : null}
 				/>
 				<Stat label="Range" value={label} />
 			</section>
@@ -124,8 +131,9 @@ export default function VideoView() {
 				subtitle={<RangeLabel dataMin={meta.minTs} dataMax={meta.maxTs} />}
 			>
 				<ChannelLeaderboard
-					channels={data.channels}
-					unattributed={data.summary.unattributed}
+					channels={data?.channels ?? []}
+					unattributed={data?.summary.unattributed ?? 0}
+					loading={loading}
 				/>
 			</ChartCard>
 
@@ -134,11 +142,14 @@ export default function VideoView() {
 				subtitle={
 					trendBucket === "month" ? "Views per month" : "Views per year"
 				}
+				loading={loading}
 			>
-				<TrendLineChart
-					data={data.trend}
-					label={`Viewing trend line chart, views per ${trendBucket}`}
-				/>
+				{data && (
+					<TrendLineChart
+						data={data.trend}
+						label={`Viewing trend line chart, views per ${trendBucket}`}
+					/>
+				)}
 			</ChartCard>
 
 			<ChartCard
@@ -150,8 +161,9 @@ export default function VideoView() {
 					</>
 				}
 				height={200}
+				loading={loading}
 			>
-				<HeatmapCalendar calendar={data.calendar} />
+				{data && <HeatmapCalendar calendar={data.calendar} />}
 			</ChartCard>
 
 			<div className="grid gap-6 lg:grid-cols-2">
@@ -159,32 +171,40 @@ export default function VideoView() {
 					title="Peak viewing hours"
 					subtitle="Local time of day, peak hour highlighted"
 					height={280}
+					loading={loading}
 				>
-					<BarsChart
-						data={hourData}
-						label="Bar chart of views by hour of day, 24 bars"
-					/>
+					{data && (
+						<BarsChart
+							data={hourData}
+							label="Bar chart of views by hour of day, 24 bars"
+						/>
+					)}
 				</ChartCard>
 				<ChartCard
 					title="Day of week"
 					subtitle="Views per weekday"
 					height={280}
+					loading={loading}
 				>
-					<BarsChart
-						data={weekdayData}
-						label="Bar chart of views by weekday, 7 bars"
-					/>
+					{data && (
+						<BarsChart
+							data={weekdayData}
+							label="Bar chart of views by weekday, 7 bars"
+						/>
+					)}
 				</ChartCard>
 			</div>
 		</div>
 	);
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: string | null }) {
 	return (
 		<div className="rounded-lg border p-3">
 			<p className="text-xs text-muted-foreground">{label}</p>
-			<p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+			<p className="mt-1 text-xl font-semibold tabular-nums">
+				{value === null ? <SkeletonText width="5ch" /> : value}
+			</p>
 		</div>
 	);
 }

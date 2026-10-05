@@ -150,7 +150,12 @@ test("the page never scrolls sideways; an oversized chart scrolls itself", async
 	});
 
 	await page.goto("/YoutubeAnalytics/video");
-	await expect(page.getByText("Watch-time calendar")).toBeVisible();
+	// Wait for the calendar itself, not the card title: the card shell renders
+	// while the numbers are still computing, so the title is visible during the
+	// skeleton phase but the chart is not there yet.
+	await expect(
+		page.locator('[role="img"][aria-label^="Watch-time calendar"]'),
+	).toBeVisible({ timeout: 15_000 });
 
 	const layout = await page.evaluate(() => {
 		const de = document.documentElement;
@@ -496,7 +501,8 @@ test("a page shows its loading state, then its numbers", async ({ page }) => {
 
 /**
  * Changing the time filter must not blank the page: the previous numbers stay
- * on screen while the new range is computed, behind a quiet "updating" marker.
+ * on screen while the new range is computed, with the page root marked
+ * aria-busy as the quiet "updating" cue.
  * Blanking to a spinner on every preset click is what makes a fast app feel slow.
  *
  * Runs against a seeded dataset because the property only exists when the
@@ -515,7 +521,12 @@ test("changing the time filter never blanks the page", async ({ page }) => {
 	await expect(
 		page.getByRole("region", { name: "Favorite artists" }),
 	).toBeVisible({ timeout: 90_000 });
-	await page.waitForTimeout(500);
+	// Wait for real data before clicking: the skeleton phase also carries
+	// aria-busy, and clicking during it would make the busy window continuous
+	// with the initial load rather than a response to the filter change.
+	await page.waitForSelector('div[aria-busy="false"]', {
+		timeout: 90_000,
+	});
 
 	const observed = await page.evaluate(async () => {
 		const squash = (text: string): string => text.replace(/\s+/g, " ").trim();
@@ -527,32 +538,47 @@ test("changing the time filter never blanks the page", async ({ page }) => {
 		);
 		if (!card || !button) return null;
 		const cards: string[] = [];
-		const statuses: string[] = [];
+		// The busy window is as short as two painted frames - frame sampling can
+		// race it, so record attribute transitions with a MutationObserver: its
+		// callback runs at the next microtask checkpoint, so even a quickly
+		// reverted aria-busy is seen. Only a transition INTO busy counts; the
+		// marker was false when the observer was attached.
+		let sawBusy = false;
+		const observer = new MutationObserver((records) => {
+			for (const record of records) {
+				if (record.target.getAttribute("aria-busy") === "true") {
+					sawBusy = true;
+				}
+			}
+		});
+		observer.observe(document.body, {
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["aria-busy"],
+		});
 		let sampling = true;
 		const frame = (): void => {
 			cards.push(squash(card.textContent ?? ""));
-			for (const el of document.querySelectorAll('[role="status"]')) {
-				const text = squash(el.textContent ?? "");
-				if (text && !statuses.includes(text)) statuses.push(text);
-			}
 			if (sampling) requestAnimationFrame(frame);
 		};
 		requestAnimationFrame(frame);
 		button.click();
 		await new Promise((resolve) => setTimeout(resolve, 3_000));
 		sampling = false;
-		return { cards: [...new Set(cards)], statuses };
+		observer.disconnect();
+		return { cards: [...new Set(cards)], sawBusy };
 	});
 
 	expect(observed).not.toBeNull();
 	const cards = observed?.cards ?? [];
-	const statuses = observed?.statuses ?? [];
+	const sawBusy = observed?.sawBusy ?? false;
 	// Never blank: at no painted moment did the card lose its content.
 	expect(cards.every((text) => text.length > 0)).toBe(true);
 	// The content really did change, so the assertion is not vacuous.
 	expect(cards.length).toBeGreaterThan(1);
-	// And the change was announced rather than left silent.
-	expect(statuses.some((s) => /Updating/.test(s))).toBe(true);
+	// And the change was announced rather than left silent: the page root
+	// carried aria-busy at some point while recomputing.
+	expect(sawBusy).toBe(true);
 });
 
 test("a playlist export in the same drop is routed to likes", async ({

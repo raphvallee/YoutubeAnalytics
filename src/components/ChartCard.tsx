@@ -1,22 +1,28 @@
 import { toPng } from "html-to-image";
 import { type ReactNode, useCallback, useRef } from "react";
+import { SkeletonChartBody } from "@/components/SkeletonText";
 
 /**
  * Shared chart shell: title, subtitle, right-aligned actions, fixed height.
  * Carries the Phase 6 download-as-PNG button (BLUEPRINT §4.3).
+ *
+ * While `loading`, the card and its header render for real and only the body
+ * stands in as a skeleton, so the page's borders never move.
  */
 export function ChartCard({
 	title,
 	subtitle,
 	actions,
 	height = 340,
+	loading = false,
 	children,
 }: {
 	title: string;
 	subtitle?: ReactNode;
 	actions?: ReactNode;
 	height?: number;
-	children: ReactNode;
+	loading?: boolean;
+	children?: ReactNode;
 }) {
 	const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +54,8 @@ export function ChartCard({
 						type="button"
 						aria-label={`Download ${title} as PNG`}
 						title="Download as PNG"
-						className="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+						disabled={loading}
+						className="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
 						onClick={() => void downloadPng()}
 					>
 						PNG
@@ -56,7 +63,7 @@ export function ChartCard({
 				</div>
 			</header>
 			<div ref={bodyRef} style={{ height }}>
-				{children}
+				{loading ? <SkeletonChartBody /> : children}
 			</div>
 		</section>
 	);
