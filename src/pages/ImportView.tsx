@@ -18,6 +18,7 @@ import {
 	type IngestResult,
 	ingestFiles,
 } from "@/ingestion/ingestClient";
+import { progressText } from "@/ingestion/progressText";
 import {
 	formatBytes,
 	getStorageEstimate,
@@ -27,12 +28,6 @@ import {
 import { useDatasetStore } from "@/state/dataset";
 import { useLikesStore } from "@/state/likes";
 import { useSnapshotsStore } from "@/state/snapshots";
-
-const PHASE_LABEL: Record<IngestProgress["phase"], string> = {
-	read: "Reading file",
-	normalize: "Parsing & normalizing",
-	persist: "Writing to local database",
-};
 
 const MODE_KEY = "import-mode";
 
@@ -402,6 +397,10 @@ export default function ImportView() {
 
 	const skipped = result?.verdicts.filter((v) => v.role === "unknown") ?? [];
 	const rowCount = meta?.rowCount ?? 0;
+	// Only meaningful while a run is in flight: null between imports, and during
+	// "loading the dataset into memory" when the copy is about the reload rather
+	// than about any file.
+	const progressCopy = progress ? progressText(progress) : null;
 
 	return (
 		<section className="mx-auto max-w-2xl space-y-6">
@@ -446,15 +445,12 @@ export default function ImportView() {
 							Loading the dataset into memory
 						</p>
 					</>
-				) : importing && progress ? (
+				) : importing && progressCopy ? (
 					<>
-						<p className="font-medium">
-							{PHASE_LABEL[progress.phase]}… (file {progress.fileIndex + 1}/
-							{progress.fileCount})
-						</p>
-						{typeof progress.rows === "number" && (
+						<p className="font-medium">{progressCopy.title}</p>
+						{progressCopy.detail && (
 							<p className="text-sm text-muted-foreground">
-								{progress.rows.toLocaleString()} streams kept
+								{progressCopy.detail}
 							</p>
 						)}
 					</>
