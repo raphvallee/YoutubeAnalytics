@@ -1,0 +1,899 @@
+[
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-01",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202101",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-01-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-02",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202102",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-02-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-03",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202103",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-03-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-04",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202104",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-04-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-05",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202105",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-05-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-06",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202106",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-06-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-07",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202107",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-07-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-08",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202108",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-08-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-09",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202109",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-09-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-10",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202110",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-10-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-11",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202111",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-11-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2021-12",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202112",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2021-12-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-01",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202201",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-01-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-02",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202202",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-02-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-03",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202203",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-03-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-04",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202204",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-04-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-05",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202205",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-05-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-06",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202206",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-06-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-07",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202207",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-07-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-08",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202208",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-08-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-09",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202209",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-09-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-10",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202210",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-10-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-11",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202211",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-11-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2022-12",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202212",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2022-12-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-01",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202301",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-01-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-02",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202302",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-02-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-03",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202303",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-03-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-04",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202304",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-04-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-05",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202305",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-05-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-06",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202306",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-06-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-07",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202307",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-07-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-08",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202308",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-08-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-09",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202309",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-09-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-10",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202310",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-10-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-11",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202311",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-11-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2023-12",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202312",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2023-12-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-01",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202401",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-01-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-02",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202402",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-02-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-03",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202403",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-03-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-04",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202404",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-04-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-05",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202405",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-05-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-06",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202406",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-06-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-07",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202407",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-07-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-08",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202408",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-08-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-09",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202409",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-09-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-10",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202410",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-10-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-11",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202411",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-11-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2024-12",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202412",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2024-12-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-01",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202501",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-01-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-02",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202502",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-02-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-03",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202503",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-03-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-04",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202504",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-04-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-05",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202505",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-05-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-06",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202506",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-06-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-07",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202507",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-07-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-08",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202508",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-08-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-09",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202509",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-09-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-10",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202510",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-10-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-11",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202511",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-11-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2025-12",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202512",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2025-12-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-01",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202601",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-01-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-02",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202602",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-02-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-03",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202603",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-03-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-04",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202604",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-04-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-05",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202605",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-05-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-06",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202606",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-06-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-07",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202607",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-07-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-08",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202608",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-08-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	},
+	{
+		"header": "YouTube",
+		"title": "Vous avez regardé Monthly Sample 2026-09",
+		"titleUrl": "https://www.youtube.com/watch?v=monthly202609",
+		"subtitles": [
+			{
+				"name": "Monthly Sample Channel",
+				"url": "https://www.youtube.com/channel/UCmonthlysample"
+			}
+		],
+		"time": "2026-09-15T20:30:00.000Z",
+		"products": ["YouTube"]
+	}
+]

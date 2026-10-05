@@ -22,6 +22,13 @@ const SEARCH_HISTORY = fileURLToPath(
 const LIKED_CSV = fileURLToPath(
 	new URL("../../src/test/fixtures/liked-music-fixture.csv", import.meta.url),
 );
+/** One watch per month for 69 months - a calendar wider than any viewport. */
+const WIDE_SPAN = fileURLToPath(
+	new URL(
+		"../../src/test/fixtures/takeout-fixture-wide-span.json",
+		import.meta.url,
+	),
+);
 
 /** Pick files, wait for the preflight table, confirm the import. */
 async function importFiles(page: Page, files: string | string[]) {
@@ -124,6 +131,56 @@ test("import fixture, then music + video pages render data", async ({
 	await expect(
 		channels.getByText(/1 view in this range not ranked/),
 	).toBeVisible();
+});
+
+test("the page never scrolls sideways; an oversized chart scrolls itself", async ({
+	page,
+}) => {
+	// Regression: `main` is a flex item, so its default `min-width: auto`
+	// resolved to its min-content width - which the calendar heatmap dictated,
+	// because `overflow-x: auto` only zeroes the automatic minimum size of
+	// flex/grid items, not a block's min-content contribution. The videos page
+	// ended up ~5700px wide and scrolled sideways forever. Wide content now
+	// scrolls inside its own card.
+	await page.setViewportSize({ width: 1280, height: 720 });
+	await page.goto("/YoutubeAnalytics/import");
+	await importFiles(page, WIDE_SPAN);
+	await expect(page.getByText("Imported dataset")).toBeVisible({
+		timeout: 15_000,
+	});
+
+	await page.goto("/YoutubeAnalytics/video");
+	await expect(page.getByText("Watch-time calendar")).toBeVisible();
+
+	const layout = await page.evaluate(() => {
+		const de = document.documentElement;
+		const calendar = document.querySelector<HTMLElement>(
+			'[role="img"][aria-label^="Watch-time calendar"]',
+		);
+		if (!calendar) throw new Error("watch-time calendar not rendered");
+		// The page must refuse to move sideways at all.
+		window.scrollTo(4000, 0);
+		const pageScrollX = window.scrollX;
+		window.scrollTo(0, 0);
+		// The calendar is the component that is genuinely too wide, so it is
+		// the one that gets a scrollbar.
+		calendar.scrollLeft = 600;
+		return {
+			viewportWidth: de.clientWidth,
+			documentWidth: de.scrollWidth,
+			pageScrollX,
+			calendarClientWidth: calendar.clientWidth,
+			calendarScrollWidth: calendar.scrollWidth,
+			calendarScrollLeft: calendar.scrollLeft,
+		};
+	});
+
+	expect(layout.pageScrollX).toBe(0);
+	expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+	expect(layout.calendarScrollWidth).toBeGreaterThan(
+		layout.calendarClientWidth,
+	);
+	expect(layout.calendarScrollLeft).toBeGreaterThan(0);
 });
 
 test("a playlist export in the same drop is routed to likes", async ({
