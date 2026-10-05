@@ -28,10 +28,12 @@ All data is stored locally in IndexedDB. Nothing is uploaded anywhere by default
     3. Click on "All YouTube data included" and deselect all except "history", click OK
     4. Click on Next and download your data once it is ready
 2. Open the app at <https://raphvallee.github.io/YoutubeAnalytics/> (or run it locally - see below).
-3. Drag & drop (or click to browse) your `watch-history.json` on the **Import** page.
-4. Wait for the parse progress bar, then explore the **Music** or **Video** tabs.
+3. Drag & drop (or click to browse) your Takeout files on the **Import** page. Filenames do not matter: each file is identified by its contents, so a whole folder can go in at once. Files that are not watch history (search history, subscriptions) are reported and skipped; playlist exports are routed to likes.
+4. Keep dropping files if you have more exports - each drop **adds to the same batch** instead of starting over, so you can assemble one import across several drags. Any file can be pulled back out with the `×` on its row. If several files share a name (every export contains a `watch-history.json`), the list numbers them by position - `watch-history.json`, `watch-history-2.json`, `watch-history-3.json` - and drops any file whose contents are identical to one already in the batch.
+5. Check the list, then confirm. If you already have data imported you choose **Add to imported data** (default) or **Replace everything**. Replace saves a snapshot of the current dataset first.
+6. Wait for the parse progress bar, then explore the **Music** or **Video** tabs.
 
-> The import replaces the current dataset entirely (simplest correct semantics for a replaceable snapshot). Incremental merge is planned.
+> **Adding exports from different dates:** every Takeout part is named `watch-history.json`, so exports taken months apart sit in separate folders. Import them one at a time with **Add** selected - rows are matched by time + video id, so re-importing the same export changes nothing and an older import is never lost. The choice is remembered between visits.
 
 ---
 
@@ -65,7 +67,7 @@ The built-in example data is served at `/dev/example-watch-history.json` (bundle
 
 - **Framework:** Vite 8 + React 19 + TypeScript (strict)
 - **Storage:** Dexie over IndexedDB (`navigator.storage.persist()` requested after import to prevent eviction)
-- **Ingestion:** Web Worker parses + normalizes `watch-history.json` in ≤100MB chunks, dedupes by `sha1(time + videoId)`, bulk-inserts into Dexie
+- **Ingestion:** Web Worker classifies each file by content, parses + normalizes it, dedupes by `sha1(time + videoId)`, and commits the whole run to Dexie in one transaction (replace or additive upsert)
 - **Analytics:** pure O(n) functions over in-memory arrays, memoized by filter key - no query engine, no WASM
 - **UI:** shadcn/ui + Tailwind CSS v4, dark-first; charts via Recharts; state via Zustand
 - **Hosting:** GitHub Pages (static build, `base: '/YoutubeAnalytics/'`)

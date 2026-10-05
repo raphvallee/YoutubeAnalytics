@@ -12,9 +12,10 @@ import {
 /**
  * Persistence layer - docs/BLUEPRINT.md §2.2.
  *
- * Import semantics: replace the whole dataset (clear + bulkPut in one rw
- * transaction). A snapshot is re-importable, incremental merge is a later
- * Settings feature.
+ * Import semantics (BLUEPRINT §2.7): one rw transaction writes the whole run.
+ * `replace` clears and rewrites; `add` upserts by row id so exports taken
+ * months apart can be layered without losing earlier history. A snapshot is
+ * always re-importable.
  */
 class AnalyticsDB extends Dexie {
 	streams!: EntityTable<StreamRecord, "id">;
@@ -63,63 +64,189 @@ class AnalyticsDB extends Dexie {
 
 export const db = new AnalyticsDB();
 
-export interface IngestSummary extends DatasetMeta {
-	duplicatesAcrossBatches: number;
+/** Per-run ingest numbers (not stored on their own - folded into meta). */
+export interface IngestStats {
+	duplicateCount: number;
+	droppedCount: number;
+	prefixesSeen: string[];
 }
 
-/** Replace the dataset with the given records and write fresh meta. */
-export async function replaceDataset(
-	records: StreamRecord[],
-	fileCount: number,
-	stats: {
-		duplicateCount: number;
-		droppedCount: number;
-		prefixesSeen: string[];
-	},
-): Promise<IngestSummary> {
-	const now = Date.now();
-	let musicCount = 0;
-	let youtubeCount = 0;
-	let unattributedMusic = 0;
-	let minTs = Number.POSITIVE_INFINITY;
-	let maxTs = Number.NEGATIVE_INFINITY;
+/** What an import actually did, for the post-import report. */
+export interface IngestSummary extends DatasetMeta {
+	/** Rows in `records` that already existed in the dataset (same id). */
+	overlapCount: number;
+	/** Rows that were not previously present: `records.length - overlapCount`. */
+	insertedCount: number;
+	/** true when the previous dataset was discarded. */
+	replaced: boolean;
+	/** Likes rows written by this run (playlist files routed from the drop). */
+	likesWritten: number;
+	/** Likes rows in the store after this run. */
+	likesTotal: number;
+}
 
-	for (const r of records) {
-		if (r.kind === "music") {
-			musicCount += 1;
-			if (!r.artist) unattributedMusic += 1;
-		} else {
-			youtubeCount += 1;
-		}
-		if (r.ts < minTs) minTs = r.ts;
-		if (r.ts > maxTs) maxTs = r.ts;
+interface Accumulator {
+	rowCount: number;
+	musicCount: number;
+	youtubeCount: number;
+	unattributedMusic: number;
+	minTs: number;
+	maxTs: number;
+}
+
+function emptyAccumulator(): Accumulator {
+	return {
+		rowCount: 0,
+		musicCount: 0,
+		youtubeCount: 0,
+		unattributedMusic: 0,
+		minTs: Number.POSITIVE_INFINITY,
+		maxTs: Number.NEGATIVE_INFINITY,
+	};
+}
+
+function accumulate(acc: Accumulator, r: StreamRecord): void {
+	acc.rowCount++;
+	if (r.kind === "music") {
+		acc.musicCount += 1;
+		if (!r.artist) acc.unattributedMusic += 1;
+	} else {
+		acc.youtubeCount++;
 	}
+	if (r.ts < acc.minTs) acc.minTs = r.ts;
+	if (r.ts > acc.maxTs) acc.maxTs = r.ts;
+}
 
-	const meta: DatasetMeta = {
+/** Turn a pass over the rows into the meta counters. */
+function toMeta(acc: Accumulator): DatasetMeta {
+	return {
 		key: "dataset",
 		schemaVersion: DATASET_SCHEMA_VERSION,
-		importedAt: now,
-		fileCount,
-		rowCount: records.length,
-		musicCount,
-		youtubeCount,
-		droppedCount: stats.droppedCount,
-		duplicateCount: stats.duplicateCount,
-		unattributedMusic,
-		minTs: records.length ? minTs : 0,
-		maxTs: records.length ? maxTs : 0,
-		prefixesSeen: stats.prefixesSeen,
+		importedAt: Date.now(),
+		fileCount: 0, // the caller owns provenance
+		rowCount: acc.rowCount,
+		musicCount: acc.musicCount,
+		youtubeCount: acc.youtubeCount,
+		unattributedMusic: acc.unattributedMusic,
+		minTs: acc.rowCount ? acc.minTs : 0,
+		maxTs: acc.rowCount ? acc.maxTs : 0,
+		droppedCount: 0,
+		duplicateCount: 0,
+		prefixesSeen: [],
 	};
+}
 
-	await db.transaction("rw", db.streams, db.meta, async () => {
-		await db.streams.clear();
+function aggregate(records: Iterable<StreamRecord>): DatasetMeta {
+	const acc = emptyAccumulator();
+	for (const r of records) accumulate(acc, r);
+	return toMeta(acc);
+}
+
+function unionPrefixes(
+	a: readonly string[] | undefined,
+	b: readonly string[],
+): string[] {
+	const out = [...(a ?? [])];
+	for (const p of b) if (!out.includes(p)) out.push(p);
+	return out;
+}
+
+export interface CommitOptions {
+	/**
+	 * "replace" clears the dataset first. "add" keeps it and upserts by row id,
+	 * so a newer export corrects rows we already hold (Takeout rewrites a play's
+	 * title and ad flags in place, and the id is time+videoId, so the id is
+	 * stable while the payload is not).
+	 */
+	mode: "replace" | "add";
+	/** Playlist rows discovered in the same drop, upserted by id. */
+	likes?: LikedTrack[];
+}
+
+/**
+ * Write an ingest run to the database in a single rw transaction: clear (if
+ * replacing), bulkPut streams in 5k chunks, upsert likes, recompute the meta
+ * counters, write meta. Either the whole run lands or none of it does.
+ *
+ * In "add" mode the aggregates are recomputed from the merged table rather than
+ * delta-ed onto the stored ones: `minTs`/`maxTs` can only widen by reading the
+ * table anyway, and deriving all of them the same way keeps them from drifting
+ * apart. Costs one cursor pass, which is far cheaper than a wrong dashboard.
+ */
+export async function commitDataset(
+	records: StreamRecord[],
+	fileCount: number,
+	stats: IngestStats,
+	options: CommitOptions,
+): Promise<IngestSummary> {
+	const { mode } = options;
+	const likes = options.likes ?? [];
+
+	return db.transaction("rw", db.streams, db.meta, db.likes, async () => {
+		const before = mode === "add" ? await getDatasetMeta() : undefined;
+
+		// Count the overlap so the report can say how much of the file was
+		// genuinely new. Cheap next to the parse that produced `records`.
+		let overlapCount = 0;
+		if (mode === "add" && records.length > 0) {
+			const existing = new Set(await db.streams.toCollection().primaryKeys());
+			for (const r of records) if (existing.has(r.id)) overlapCount++;
+		}
+
+		if (mode === "replace") await db.streams.clear();
+
 		for (let i = 0; i < records.length; i += 5000) {
 			await db.streams.bulkPut(records.slice(i, i + 5000));
 		}
-		await db.meta.put(meta);
-	});
 
-	return { ...meta, duplicatesAcrossBatches: stats.duplicateCount };
+		if (likes.length > 0) {
+			for (let i = 0; i < likes.length; i += 5000) {
+				await db.likes.bulkPut(likes.slice(i, i + 5000));
+			}
+		}
+
+		// Replace mode: the table now holds exactly `records`, so aggregate them
+		// in memory. Add mode: re-derive from the merged table with a cursor
+		// pass, so a 1M-row dataset is never materialized into memory.
+		let meta: DatasetMeta;
+		if (mode === "add") {
+			const acc = emptyAccumulator();
+			await db.streams.each((r) => {
+				accumulate(acc, r);
+			});
+			meta = toMeta(acc);
+		} else {
+			meta = aggregate(records);
+		}
+		meta.importedAt = Date.now();
+		meta.fileCount = before ? before.fileCount + fileCount : fileCount;
+		meta.droppedCount = stats.droppedCount + (before?.droppedCount ?? 0);
+		meta.duplicateCount = stats.duplicateCount + (before?.duplicateCount ?? 0);
+		meta.prefixesSeen = unionPrefixes(before?.prefixesSeen, stats.prefixesSeen);
+		await db.meta.put(meta);
+
+		return {
+			...meta,
+			overlapCount,
+			insertedCount: records.length - overlapCount,
+			replaced: mode === "replace",
+			likesWritten: likes.length,
+			likesTotal: await db.likes.count(),
+		};
+	});
+}
+
+/**
+ * Replace the dataset with the given records and write fresh meta.
+ * Thin wrapper over {@link commitDataset} - kept for the single-file callers
+ * that have always meant "this file is the dataset".
+ */
+export async function replaceDataset(
+	records: StreamRecord[],
+	fileCount: number,
+	stats: IngestStats,
+): Promise<IngestSummary> {
+	return commitDataset(records, fileCount, stats, { mode: "replace" });
 }
 
 export async function getDatasetMeta(): Promise<DatasetMeta | undefined> {
