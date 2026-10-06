@@ -199,10 +199,13 @@ export default function VideoView() {
 }
 
 function Stat({ label, value }: { label: string; value: string | null }) {
+	// Matches the Music page's "Est. listening" stat card height (label + value
+	// + hint line), so both dashboards open with equally tall info cards. The
+	// value line flexes and centers in the leftover space.
 	return (
-		<div className="rounded-lg border p-3">
+		<div className="flex min-h-24 flex-col rounded-lg border p-3">
 			<p className="text-xs text-muted-foreground">{label}</p>
-			<p className="mt-1 text-xl font-semibold tabular-nums">
+			<p className="mt-1 flex flex-1 items-center text-2xl font-semibold tabular-nums">
 				{value === null ? <SkeletonText width="5ch" /> : value}
 			</p>
 		</div>
