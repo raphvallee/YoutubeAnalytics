@@ -369,10 +369,13 @@ function Stat({
 	value: string | null;
 	hint?: string;
 }) {
+	// Column flex so every card in the grid row fills the height of the tallest
+	// one (the "Est. listening" card, which carries a hint line); the value line
+	// flexes and centers in the leftover space instead of leaving a gap.
 	return (
-		<div className="rounded-lg border p-3">
+		<div className="flex flex-col rounded-lg border p-3">
 			<p className="text-xs text-muted-foreground">{label}</p>
-			<p className="mt-1 text-xl font-semibold tabular-nums">
+			<p className="mt-1 flex flex-1 items-center text-2xl font-semibold tabular-nums">
 				{value === null ? <SkeletonText width="5ch" /> : value}
 			</p>
 			{hint && <p className="text-xs text-muted-foreground">{hint}</p>}
