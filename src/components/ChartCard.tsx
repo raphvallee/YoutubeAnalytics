@@ -32,6 +32,7 @@ export function ChartCard({
 		const dataUrl = await toPng(node, {
 			backgroundColor: "#0d0d0d",
 			pixelRatio: 2,
+			style: { padding: "12px" },
 		});
 		const link = document.createElement("a");
 		link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
