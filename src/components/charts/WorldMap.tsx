@@ -1,5 +1,6 @@
 import { geoEqualEarth, geoPath } from "d3-geo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SkeletonText } from "@/components/SkeletonText";
 import { worldFeatures } from "@/lib/geo";
 import { HEAT_RAMP, heatIntensities, rampColor } from "@/lib/heat";
 import {
@@ -22,6 +23,11 @@ import { SERIES_COLORS } from "@/lib/palette";
  * wheel/double-click to zoom, drag to pan, +/−/reset buttons. All geometry
  * is computed once at module load - nothing is fetched at runtime
  * (base-path rule).
+ *
+ * While `loading` (the ranking pass behind the markers has not landed yet),
+ * the real map stays on screen - bare land, no markers, no tint - with a
+ * pulse shimmer over it, so the placeholder has the map's own silhouette
+ * instead of a gray box.
  */
 
 export type MapMode = "dots" | "heat" | "heat-plays";
@@ -79,21 +85,25 @@ const PRECISION_LABEL: Record<MapPoint["precision"], string> = {
 	country: "Country",
 };
 
-const MODE_ARIA: Record<MapMode, string> = {
+const MODE_ARIA: Record<MapMode | "loading", string> = {
 	dots: "World map with a point at each artist's place of origin",
 	heat: "World map heat layer of artist origins, one glow per place",
 	"heat-plays":
 		"World map heat layer of artist origins weighted by all-time plays",
+	loading: "World map of artist origins, loading",
 };
 
 export function WorldMap({
 	points,
 	shadedIds,
 	mode,
+	loading = false,
 }: {
 	points: MapPoint[];
 	shadedIds: Set<string>;
 	mode: MapMode;
+	/** True while the ranking behind the markers is still computing. */
+	loading?: boolean;
 }) {
 	const [tip, setTip] = useState<{
 		x: number;
@@ -181,7 +191,8 @@ export function WorldMap({
 					viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
 					className="h-full w-full cursor-grab active:cursor-grabbing select-none [touch-action:none]"
 					role="img"
-					aria-label={MODE_ARIA[mode]}
+					aria-label={loading ? MODE_ARIA.loading : MODE_ARIA[mode]}
+					aria-busy={loading || undefined}
 					onPointerDown={(e) => {
 						if (e.button !== 0) return;
 						dragRef.current = {
@@ -357,6 +368,15 @@ export function WorldMap({
 						⌂
 					</button>
 				</div>
+				{loading && (
+					// Pulse over the map itself: the real land silhouette stays
+					// visible underneath - bare, untinted, marker-free - so the
+					// loading state has the map's own shape, not a gray box.
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-0 animate-pulse bg-muted/20"
+					/>
+				)}
 				{tip && (
 					<div
 						className="pointer-events-none absolute z-10 max-w-64 rounded-md border bg-popover px-2.5 py-1.5 text-xs shadow-md"
@@ -371,15 +391,23 @@ export function WorldMap({
 					</div>
 				)}
 			</div>
-			<Legend placed={points.length} mode={mode} />
+			<Legend placed={points.length} mode={mode} loading={loading} />
 		</div>
 	);
 }
 
-function Legend({ placed, mode }: { placed: number; mode: MapMode }) {
+function Legend({
+	placed,
+	mode,
+	loading = false,
+}: {
+	placed: number;
+	mode: MapMode;
+	loading?: boolean;
+}) {
 	return (
 		<div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-			{mode === "dots" ? (
+			{loading ? null : mode === "dots" ? (
 				<>
 					<span className="flex items-center gap-1.5">
 						<svg width="12" height="12" aria-hidden="true">
@@ -417,7 +445,13 @@ function Legend({ placed, mode }: { placed: number; mode: MapMode }) {
 			</span>
 			<span>scroll to zoom · drag to pan · double-click to zoom in</span>
 			<span className="ml-auto">
-				{placed} place{placed === 1 ? "" : "s"} shown
+				{loading ? (
+					<SkeletonText width="9ch" />
+				) : (
+					<>
+						{placed} place{placed === 1 ? "" : "s"} shown
+					</>
+				)}
 			</span>
 		</div>
 	);

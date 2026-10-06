@@ -15,6 +15,7 @@ export function ChartCard({
 	actions,
 	height = 340,
 	loading = false,
+	pngDisabled = false,
 	children,
 }: {
 	title: string;
@@ -22,6 +23,8 @@ export function ChartCard({
 	actions?: ReactNode;
 	height?: number;
 	loading?: boolean;
+	/** Disable only the PNG export while children render for real. */
+	pngDisabled?: boolean;
 	children?: ReactNode;
 }) {
 	const bodyRef = useRef<HTMLDivElement>(null);
@@ -54,7 +57,7 @@ export function ChartCard({
 						type="button"
 						aria-label={`Download ${title} as PNG`}
 						title="Download as PNG"
-						disabled={loading}
+						disabled={loading || pngDisabled}
 						className="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
 						onClick={() => void downloadPng()}
 					>
