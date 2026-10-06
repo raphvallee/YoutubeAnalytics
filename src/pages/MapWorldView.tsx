@@ -140,8 +140,9 @@ export default function MapWorldView() {
 		);
 	}
 	// The map's own SVG is cheap, but the ranking behind it is a full pass. The
-	// page renders its real structure meanwhile; the ranking-derived text and
-	// map body stand in as skeletons until it lands (see SkeletonText).
+	// page renders its real structure meanwhile; the map stays on screen bare
+	// with a shimmer (see WorldMap) and the ranking-derived text and table
+	// stand in as skeletons until it lands (see SkeletonText).
 	if (plays.error && artistPlays === null) throw new Error(plays.error);
 	const loading = artistPlays === null;
 	const placed = cache.filter((c) => c.precision !== "miss").length;
@@ -170,12 +171,17 @@ export default function MapWorldView() {
 				title="Where your artists come from"
 				subtitle="All-time · artist birth / foundation place, city precision preferred"
 				height={480}
-				loading={loading}
+				pngDisabled={loading}
 				actions={<ModeSwitch mode={mode} onMode={setMode} />}
 			>
-				{!loading && (
-					<WorldMap points={points} shadedIds={shadedIds} mode={mode} />
-				)}
+				{/* The map body never swaps to a skeleton: the real (bare) map
+					stays on screen with a shimmer while the ranking computes. */}
+				<WorldMap
+					points={points}
+					shadedIds={shadedIds}
+					mode={mode}
+					loading={loading}
+				/>
 			</ChartCard>
 
 			<ChartCard
